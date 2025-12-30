@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -6,6 +7,50 @@
     <title>PRHOMZ AI Designer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --brand-glow: rgba(86, 119, 114, 0.15);
+      }
+      
+      body {
+        background: radial-gradient(circle at 50% 0%, #1a2a28 0%, #151f1e 100%);
+        overflow-x: hidden;
+      }
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #151f1e;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #2f403e;
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #567772;
+      }
+
+      .glass-card {
+        background: rgba(41, 54, 52, 0.4);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .text-glow {
+        text-shadow: 0 0 20px rgba(86, 119, 114, 0.5);
+      }
+
+      @keyframes fade-in {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .animate-fade-in {
+        animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+    </style>
     <script>
       tailwind.config = {
         theme: {
@@ -28,6 +73,9 @@
                 900: '#293634',
                 950: '#151f1e',
               }
+            },
+            backgroundImage: {
+              'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
             }
           }
         }

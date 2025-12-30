@@ -1,5 +1,6 @@
+
 import React, { useState, useRef } from 'react';
-import { Upload, Paintbrush, Download, ArrowRight, ShoppingBag, DollarSign } from 'lucide-react';
+import { Upload, Paintbrush, Download, ArrowRight, ShoppingBag, DollarSign, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { remodelImage } from '../services/geminiService';
 import { GeneratedImage } from '../types';
 import { Button } from './Button';
@@ -68,30 +69,42 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated }) => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl font-serif font-bold text-white">Room Remodeler</h2>
-        <p className="text-brand-300">Upload a photo and give instructions to transform it.</p>
+    <div className="max-w-6xl mx-auto space-y-12 pb-12 animate-fade-in">
+      <div className="space-y-4 max-w-2xl">
+        <div className="inline-flex items-center space-x-2 bg-brand-500/10 border border-brand-500/20 px-4 py-1.5 rounded-full mb-2">
+          <Paintbrush className="w-3.5 h-3.5 text-brand-400" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-300">Space Transformation</span>
+        </div>
+        <h2 className="text-5xl font-serif font-bold text-white tracking-tight leading-tight">
+          Reimagine your <span className="italic text-brand-400">physical world</span>
+        </h2>
+        <p className="text-brand-300/80 text-lg leading-relaxed">
+          Upload an existing space and let PRHOMZ apply architectural updates with surgical precision.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-stretch">
+        <div className="lg:col-span-5 space-y-8">
           <div 
             onClick={() => fileInputRef.current?.click()}
             className={`
-              relative h-64 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all
+              relative h-72 border border-white/5 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all group overflow-hidden glass-card
               ${previewUrl 
-                ? 'border-brand-700 bg-brand-950' 
-                : 'border-brand-600 bg-brand-900/30 hover:bg-brand-900/50 hover:border-brand-500'}
+                ? 'bg-brand-950/80' 
+                : 'bg-brand-900/20 hover:bg-brand-900/40 hover:border-brand-500/30'}
             `}
           >
             {previewUrl ? (
-              <img src={previewUrl} alt="Original" className="w-full h-full object-contain rounded-xl p-2" />
+              <img src={previewUrl} alt="Original" className="w-full h-full object-cover p-1 rounded-[2rem]" />
             ) : (
-              <div className="text-center p-6 space-y-2 text-brand-400">
-                <Upload className="w-10 h-10 mx-auto mb-2" />
-                <p className="font-medium">Click to upload photo</p>
-                <p className="text-xs text-brand-500">JPG, PNG up to 5MB</p>
+              <div className="text-center p-12 space-y-4 text-brand-500 transition-all group-hover:text-brand-300">
+                <div className="w-16 h-16 bg-brand-900 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/5 group-hover:scale-110 transition-transform">
+                  <Upload className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-widest text-white">Upload Reference</p>
+                  <p className="text-[10px] uppercase tracking-widest mt-1 opacity-60">High-Resolution Preferred</p>
+                </div>
               </div>
             )}
             <input 
@@ -101,31 +114,38 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated }) => {
               accept="image/*"
               className="hidden" 
             />
+            {previewUrl && (
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <span className="text-[10px] font-bold uppercase tracking-widest bg-white text-brand-950 px-4 py-2 rounded-full">Replace Image</span>
+              </div>
+            )}
           </div>
 
-          <form onSubmit={handleRemodel} className="space-y-6 bg-brand-900/50 p-6 rounded-2xl border border-brand-800">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-brand-200">What should we change?</label>
+          <form onSubmit={handleRemodel} className="glass-card p-8 rounded-[2rem] space-y-8">
+            <div className="space-y-3">
+              <label className="text-xs font-bold uppercase tracking-widest text-brand-400">Transformation Brief</label>
               <div className="relative">
                 <input
                   type="text"
                   value={instruction}
                   onChange={(e) => setInstruction(e.target.value)}
-                  placeholder="E.g., Change the wall color to sage green"
-                  className="w-full bg-brand-950 border border-brand-700 rounded-lg py-3 px-4 pr-12 text-white placeholder-brand-600 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                  placeholder="E.g., Replace the sofa with a curved ivory boucle lounge..."
+                  className="w-full bg-brand-950/50 border border-white/5 rounded-2xl py-5 px-6 pr-14 text-white placeholder-brand-700/60 focus:ring-2 focus:ring-brand-500/30 focus:outline-none shadow-inner"
                 />
-                <Paintbrush className="absolute right-4 top-3.5 w-5 h-5 text-brand-500" />
+                <Paintbrush className="absolute right-5 top-5 w-5 h-5 text-brand-700" />
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex justify-between items-end">
-                <label className="text-sm font-medium text-brand-200">Remodel Budget</label>
-                <span className="text-brand-400 text-xs font-mono bg-brand-950 px-2 py-1 rounded border border-brand-800">
-                  {getBudgetTier(budget)}
-                </span>
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold uppercase tracking-widest text-brand-400">Remodel Budget</label>
+                <div className="px-3 py-1 bg-brand-800/40 rounded-lg border border-white/5">
+                  <span className="text-brand-200 text-[10px] font-mono uppercase tracking-tighter">
+                    {getBudgetTier(budget)}
+                  </span>
+                </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <input 
                   type="range" 
                   min="500" 
@@ -133,62 +153,70 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated }) => {
                   step="500"
                   value={budget}
                   onChange={(e) => setBudget(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-brand-800 rounded-lg appearance-none cursor-pointer accent-brand-500"
+                  className="w-full h-1 bg-brand-800 rounded-lg appearance-none cursor-pointer accent-brand-400"
                 />
-                <div className="flex justify-between text-[10px] text-brand-500 font-bold uppercase tracking-wider">
-                  <span>$500</span>
-                  <span className="text-brand-300 font-mono text-sm">${budget.toLocaleString()}{budget === 50000 ? '+' : ''}</span>
-                  <span>$50,000+</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] text-brand-600 font-bold tracking-widest">$500</span>
+                  <span className="text-brand-100 font-serif text-2xl tracking-tighter">${budget.toLocaleString()}<span className="text-brand-500">{budget === 50000 ? '+' : ''}</span></span>
+                  <span className="text-[10px] text-brand-600 font-bold tracking-widest">$50,000</span>
                 </div>
               </div>
             </div>
 
             <Button 
               type="submit" 
-              className="w-full" 
+              className="w-full py-5 rounded-2xl shadow-2xl hover:scale-[1.02] transition-all" 
               isLoading={isProcessing}
               disabled={!previewUrl || !instruction.trim()}
             >
-              Transform Space
+              Initialize Transformation
             </Button>
           </form>
         </div>
 
-        <div className="space-y-4">
-          <div className="h-64 lg:h-[400px] bg-brand-950 rounded-2xl border border-brand-800 flex items-center justify-center relative overflow-hidden group">
+        <div className="lg:col-span-7 h-full">
+          <div className="relative group min-h-[500px] lg:h-full flex items-center justify-center bg-brand-950 rounded-[2.5rem] border border-white/5 overflow-hidden shadow-inner">
             {resultImage ? (
-              <div className="relative w-full h-full">
-                 <img src={resultImage} alt="Remodeled" className="w-full h-full object-contain" />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center space-y-3">
-                     <Button 
-                        onClick={() => setIsShopOpen(true)}
-                        className="bg-white text-brand-900 hover:bg-brand-100 hover:text-brand-900 border-none shadow-xl transform hover:scale-105 transition-all"
-                      >
-                        <ShoppingBag className="w-4 h-4 mr-2" />
-                        Shop This Look
-                      </Button>
-                      <a 
-                        href={resultImage} 
-                        download={`prhomz-remodel-${Date.now()}.png`}
-                        className="inline-flex items-center px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-400 transition-colors"
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Save Image
-                      </a>
-                  </div>
+              <div className="relative w-full h-full animate-fade-in">
+                <img src={resultImage} alt="Remodeled" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col items-center justify-center space-y-6">
+                   <Button 
+                      onClick={() => setIsShopOpen(true)}
+                      className="bg-white text-brand-950 hover:bg-brand-50 px-8 py-4 rounded-full border-none shadow-[0_20px_40px_rgba(0,0,0,0.5)] transform translate-y-4 group-hover:translate-y-0 transition-all duration-500"
+                    >
+                      <ShoppingBag className="w-4 h-4 mr-3" />
+                      Shop the Look
+                    </Button>
+                    <a 
+                      href={resultImage} 
+                      download={`prhomz-remodel-${Date.now()}.png`}
+                      className="flex items-center px-6 py-2 bg-white/10 backdrop-blur-md text-white rounded-full border border-white/10 hover:bg-white/20 transition-all transform translate-y-8 group-hover:translate-y-0 transition-all duration-700"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Save Result
+                    </a>
+                </div>
               </div>
             ) : (
-              <div className="text-brand-700 text-center p-8">
+              <div className="text-center p-12 space-y-8 flex flex-col items-center">
                 {isProcessing ? (
-                  <div className="space-y-4 animate-pulse">
-                     <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                     <p className="text-sm font-medium">Reimagining for ${budget.toLocaleString()}...</p>
+                  <div className="space-y-8 flex flex-col items-center">
+                    <div className="relative">
+                      <div className="w-20 h-20 border-t-2 border-brand-500 rounded-full animate-spin"></div>
+                      <Sparkles className="absolute inset-0 m-auto w-6 h-6 text-brand-500 animate-pulse" />
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-white font-serif text-2xl italic tracking-wide">Synthesizing Space</h4>
+                      <p className="text-brand-600 text-[10px] font-bold uppercase tracking-[0.3em]">Allocating ${budget.toLocaleString()} Resources</p>
+                    </div>
                   </div>
                 ) : (
-                  <>
-                    <ArrowRight className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                    <p>The transformed result will appear here</p>
-                  </>
+                  <div className="space-y-6 flex flex-col items-center opacity-30 group-hover:opacity-50 transition-all">
+                    <div className="w-24 h-24 rounded-full border-2 border-dashed border-brand-800 flex items-center justify-center">
+                      <ArrowRight className="w-10 h-10" />
+                    </div>
+                    <p className="font-serif italic text-xl">The future of your space appears here</p>
+                  </div>
                 )}
               </div>
             )}
