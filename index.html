@@ -4,51 +4,75 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PRHOMZ AI Designer</title>
+    <title>PRHOMZ AI DESIGNER | DECOR • DESIGN • DELIVERED</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
       :root {
-        --brand-glow: rgba(86, 119, 114, 0.15);
+        --brand-gold: #c5a059;
+        --brand-sage: #567772;
+        --brand-dark: #0a0f0e;
       }
       
       body {
-        background: radial-gradient(circle at 50% 0%, #1a2a28 0%, #151f1e 100%);
+        background: radial-gradient(circle at 50% -20%, #1a2a28 0%, #0a0f0e 100%);
         overflow-x: hidden;
       }
 
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
-        width: 6px;
+        width: 4px;
       }
       ::-webkit-scrollbar-track {
-        background: #151f1e;
+        background: #0a0f0e;
       }
       ::-webkit-scrollbar-thumb {
         background: #2f403e;
         border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #567772;
+        background: var(--brand-gold);
       }
 
       .glass-card {
-        background: rgba(41, 54, 52, 0.4);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(15, 23, 21, 0.6);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(197, 160, 89, 0.1);
       }
 
-      .text-glow {
-        text-shadow: 0 0 20px rgba(86, 119, 114, 0.5);
+      .gold-glow {
+        box-shadow: 0 0 30px rgba(197, 160, 89, 0.1);
       }
 
-      @keyframes fade-in {
-        from { opacity: 0; transform: translateY(10px); }
+      .text-gold {
+        color: var(--brand-gold);
+      }
+
+      @keyframes slide-up {
+        from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
       }
 
-      .animate-fade-in {
-        animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      .animate-slide-up {
+        animation: slide-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      .gold-shimmer {
+        background: linear-gradient(90deg, transparent, rgba(197, 160, 89, 0.1), transparent);
+        background-size: 200% 100%;
+        animation: shimmer 2s infinite;
+      }
+
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+
+      .font-nav {
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        font-weight: 700;
+        font-size: 0.65rem;
       }
     </style>
     <script>
@@ -60,6 +84,19 @@
               sans: ['Inter', 'sans-serif'],
             },
             colors: {
+              gold: {
+                50: '#fcfaf2',
+                100: '#f7f1db',
+                200: '#eddca9',
+                300: '#e1c172',
+                400: '#d5a146',
+                500: '#c5a059', // Brand Gold
+                600: '#ae8044',
+                700: '#91643a',
+                800: '#775234',
+                900: '#62442e',
+                950: '#382517',
+              },
               brand: {
                 50: '#f4f7f6',
                 100: '#e3e9e8',
@@ -71,11 +108,8 @@
                 700: '#374d4a',
                 800: '#2f403e',
                 900: '#293634',
-                950: '#151f1e',
+                950: '#0a0f0e',
               }
-            },
-            backgroundImage: {
-              'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
             }
           }
         }

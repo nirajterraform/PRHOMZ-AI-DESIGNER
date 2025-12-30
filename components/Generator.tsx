@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Sparkles, Download, ShoppingBag, DollarSign, Layers, Maximize2 } from 'lucide-react';
+import { Sparkles, Download, ShoppingBag, DollarSign, Layers, Maximize2, Diamond } from 'lucide-react';
 import { generateDesignImage } from '../services/geminiService';
 import { AspectRatio, GeneratedImage } from '../types';
 import { Button } from './Button';
@@ -19,10 +19,10 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
   const [isShopOpen, setIsShopOpen] = useState(false);
 
   const getBudgetTier = (val: number) => {
-    if (val < 2000) return 'Essential';
-    if (val < 10000) return 'Standard';
-    if (val < 25000) return 'Premium';
-    return 'Luxury';
+    if (val < 2000) return 'Essential Curation';
+    if (val < 10000) return 'Signature Design';
+    if (val < 25000) return 'Premium Collection';
+    return 'Elite Atelier';
   };
 
   const handleGenerate = async (e: React.FormEvent) => {
@@ -31,7 +31,7 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
 
     setIsGenerating(true);
     try {
-      const budgetContext = `The project budget is approximately $${budget.toLocaleString()} (${getBudgetTier(budget)} tier). Ensure the materials, furniture, and finishes reflect this budget level.`;
+      const budgetContext = `The project budget is approximately $${budget.toLocaleString()} (${getBudgetTier(budget)} tier). Ensure the materials, furniture, and finishes reflect this budget level. Focus on high-end luxury aesthetics.`;
       const fullPrompt = `${prompt}. ${budgetContext}`;
       
       const base64Image = await generateDesignImage(fullPrompt, aspectRatio);
@@ -63,156 +63,152 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-12 pb-12">
-      <div className="space-y-4 max-w-2xl">
-        <div className="inline-flex items-center space-x-2 bg-brand-500/10 border border-brand-500/20 px-4 py-1.5 rounded-full mb-2">
-          <Sparkles className="w-3.5 h-3.5 text-brand-400" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-300">Generative Architect</span>
+    <div className="max-w-7xl mx-auto space-y-16 pb-24 animate-slide-up">
+      <div className="space-y-6 max-w-3xl">
+        <div className="inline-flex items-center space-x-3 bg-gold-500/10 border border-gold-500/20 px-5 py-2 rounded-full mb-2">
+          <Diamond className="w-3.5 h-3.5 text-gold-500" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gold-500">Design Initializer</span>
         </div>
-        <h2 className="text-5xl font-serif font-bold text-white tracking-tight leading-tight">
-          Craft your <span className="italic text-brand-400">ideal sanctuary</span>
+        <h2 className="text-6xl md:text-7xl font-serif font-black text-white tracking-tighter leading-none italic">
+          Imagine <span className="text-gold-500 not-italic">Limitless</span> <br/>Refinement.
         </h2>
-        <p className="text-brand-300/80 text-lg leading-relaxed">
-          Translate your aesthetic desires into stunning, hyper-realistic interior visualizations instantly.
+        <p className="text-brand-300 text-xl font-light leading-relaxed max-w-2xl italic">
+          PRHOMZ AI synthesizes architectural brilliance with high-fashion decor to deliver your next masterpiece.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        <div className="lg:col-span-5 space-y-8">
-          <form onSubmit={handleGenerate} className="glass-card p-8 rounded-3xl space-y-8">
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <label className="text-xs font-bold uppercase tracking-widest text-brand-400">Concept Vision</label>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
+        <div className="lg:col-span-5 space-y-10">
+          <form onSubmit={handleGenerate} className="glass-card p-10 rounded-[3rem] space-y-10 border border-gold-500/10">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center px-1">
+                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-gold-500">Vision Script</label>
                 <Layers className="w-4 h-4 text-brand-700" />
               </div>
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="E.g., A mid-century modern library with oak shelving and deep emerald velvet lounge chairs..."
-                className="w-full h-40 bg-brand-950/50 border border-white/5 rounded-2xl p-5 text-white placeholder-brand-700/60 focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/30 transition-all resize-none shadow-inner"
+                placeholder="E.g., A sprawling Brutalist villa in the Swiss Alps with warm cedar ceilings and oversized mohair sectionals..."
+                className="w-full h-44 bg-brand-950/80 border border-white/5 rounded-[2rem] p-7 text-white placeholder-brand-800 text-lg font-serif italic focus:ring-2 focus:ring-gold-500/30 focus:border-gold-500/20 transition-all resize-none shadow-inner"
               />
             </div>
 
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <label className="text-xs font-bold uppercase tracking-widest text-brand-400">Financial Tier</label>
-                <div className="px-3 py-1 bg-brand-800/40 rounded-lg border border-white/5">
-                  <span className="text-brand-200 text-[10px] font-mono uppercase tracking-tighter">
-                    {getBudgetTier(budget)} Selection
+            <div className="space-y-8">
+              <div className="flex justify-between items-center px-1">
+                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-gold-500">Financial Portrait</label>
+                <div className="px-3 py-1 bg-gold-500/5 rounded-lg border border-gold-500/20">
+                  <span className="text-gold-500 text-[9px] font-black uppercase tracking-widest">
+                    {getBudgetTier(budget)}
                   </span>
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <input 
                   type="range" 
-                  min="500" 
-                  max="50000" 
-                  step="500"
+                  min="1000" 
+                  max="100000" 
+                  step="1000"
                   value={budget}
                   onChange={(e) => setBudget(parseInt(e.target.value))}
-                  className="w-full h-1 bg-brand-800 rounded-lg appearance-none cursor-pointer accent-brand-400"
+                  className="w-full h-1 bg-brand-900 rounded-lg appearance-none cursor-pointer accent-gold-500"
                 />
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-brand-600 font-bold">$500</span>
-                  <span className="text-brand-100 font-serif text-2xl tracking-tighter">${budget.toLocaleString()}<span className="text-brand-500">{budget === 50000 ? '+' : ''}</span></span>
-                  <span className="text-[10px] text-brand-600 font-bold">$50,000</span>
+                  <span className="text-[9px] text-brand-700 font-black tracking-widest">$1,000</span>
+                  <span className="text-white font-serif text-3xl font-black italic tracking-tighter">${budget.toLocaleString()}</span>
+                  <span className="text-[9px] text-brand-700 font-black tracking-widest">$100,000</span>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <label className="text-xs font-bold uppercase tracking-widest text-brand-400">Composition</label>
-              <div className="grid grid-cols-3 gap-3">
-                {(['16:9', '1:1', '9:16'] as AspectRatio[]).map((ratio) => (isActive => (
+            <div className="space-y-5">
+              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-gold-500 px-1">Perspective</label>
+              <div className="grid grid-cols-3 gap-4">
+                {(['16:9', '1:1', '9:16'] as AspectRatio[]).map((ratio) => (
                   <button
                     key={ratio}
                     type="button"
                     onClick={() => setAspectRatio(ratio)}
                     className={`
-                      py-3 px-4 rounded-xl text-xs font-bold transition-all relative overflow-hidden
+                      py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all relative overflow-hidden border
                       ${aspectRatio === ratio 
-                        ? 'bg-brand-500 text-white shadow-[0_0_15px_rgba(86,119,114,0.4)]' 
-                        : 'bg-brand-950/80 text-brand-500 border border-white/5 hover:border-brand-500/50 hover:text-brand-300'}
+                        ? 'bg-gold-500 border-gold-400 text-white shadow-lg' 
+                        : 'bg-brand-950/80 text-brand-600 border-white/5 hover:border-gold-500/30 hover:text-gold-300'}
                     `}
                   >
                     {ratio}
                   </button>
-                ))(aspectRatio === ratio))}
+                ))}
               </div>
             </div>
 
             <Button 
               type="submit" 
-              className="w-full py-5 rounded-2xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-transform" 
+              className="w-full py-6 rounded-3xl shadow-[0_20px_50px_rgba(197,160,89,0.2)] hover:scale-[1.02] active:scale-95 transition-all text-xl font-serif italic font-bold h-20" 
               isLoading={isGenerating}
               disabled={!prompt.trim()}
             >
-              <Sparkles className="w-4 h-4 mr-3" />
-              Initialize Rendering
+              <Sparkles className="w-5 h-5 mr-3" />
+              Manifest Design
             </Button>
           </form>
-
-          <div className="flex flex-wrap gap-2">
-            {['Minimalist Zen', 'Dark Academia', 'Biophilic', 'Futuristic', 'Art Deco'].map(tag => (
-              <button
-                key={tag}
-                onClick={() => setPrompt(prev => prev + (prev ? ', ' : '') + tag)}
-                className="px-4 py-2 bg-brand-900/20 text-[10px] text-brand-400 font-bold uppercase tracking-widest rounded-full border border-white/5 hover:bg-brand-800 hover:text-brand-100 transition-all duration-300"
-              >
-                + {tag}
-              </button>
-            ))}
-          </div>
         </div>
 
         <div className="lg:col-span-7 h-full">
-          <div className="relative group min-h-[500px] lg:h-full flex items-center justify-center bg-brand-950 rounded-[2.5rem] border border-white/5 overflow-hidden shadow-inner">
+          <div className="relative group min-h-[600px] lg:h-full flex items-center justify-center bg-black rounded-[4rem] border border-gold-500/10 overflow-hidden shadow-inner">
+            <div className="absolute inset-0 gold-shimmer opacity-20 pointer-events-none"></div>
             {currentImage ? (
-              <div className="relative w-full h-full animate-fade-in">
+              <div className="relative w-full h-full animate-slide-up">
                 <img 
                   src={currentImage} 
-                  alt="Generated Design" 
-                  className="w-full h-full object-cover"
+                  alt="Render" 
+                  className="w-full h-full object-cover shadow-2xl"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col items-center justify-center space-y-6">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-700 flex flex-col items-center justify-center space-y-8">
                    <Button 
                       onClick={() => setIsShopOpen(true)}
-                      className="bg-white text-brand-950 hover:bg-brand-50 hover:text-brand-950 px-8 py-4 rounded-full border-none shadow-[0_20px_40px_rgba(0,0,0,0.5)] transform translate-y-4 group-hover:translate-y-0 transition-all duration-500"
+                      className="bg-white text-brand-950 hover:bg-gold-500 hover:text-white px-12 py-5 rounded-full border-none shadow-[0_30px_60px_rgba(0,0,0,0.6)] transform translate-y-6 group-hover:translate-y-0 transition-all duration-700 font-serif italic font-bold text-lg"
                     >
-                      <ShoppingBag className="w-4 h-4 mr-3" />
-                      Shop the Curation
+                      <ShoppingBag className="w-5 h-5 mr-4" />
+                      Shop the Decor
                     </Button>
-                    <div className="flex space-x-3 transform translate-y-8 group-hover:translate-y-0 transition-all duration-700 delay-75">
-                      <Button variant="ghost" size="sm" onClick={downloadImage} className="bg-white/10 backdrop-blur-md px-6 rounded-full border border-white/10">
-                        <Download className="w-4 h-4 mr-2" />
-                        Save
+                    <div className="flex space-x-4 transform translate-y-12 group-hover:translate-y-0 transition-all duration-1000 delay-100">
+                      <Button variant="ghost" size="sm" onClick={downloadImage} className="bg-white/5 backdrop-blur-3xl px-8 h-12 rounded-full border border-white/10 hover:border-gold-500/50">
+                        <Download className="w-4 h-4 mr-3" />
+                        Archive
                       </Button>
-                      <Button variant="ghost" size="sm" className="bg-white/10 backdrop-blur-md px-6 rounded-full border border-white/10">
-                        <Maximize2 className="w-4 h-4 mr-2" />
-                        Full Size
+                      <Button variant="ghost" size="sm" className="bg-white/5 backdrop-blur-3xl px-8 h-12 rounded-full border border-white/10 hover:border-gold-500/50">
+                        <Maximize2 className="w-4 h-4 mr-3" />
+                        Exhibition
                       </Button>
                     </div>
                 </div>
               </div>
             ) : (
-              <div className="text-center text-brand-700 p-12 space-y-6">
+              <div className="text-center p-20 space-y-8 flex flex-col items-center">
                 {isGenerating ? (
-                  <div className="space-y-8 flex flex-col items-center">
+                  <div className="space-y-10 flex flex-col items-center">
                     <div className="relative">
-                      <div className="w-20 h-20 border-t-2 border-brand-500 rounded-full animate-spin"></div>
-                      <Sparkles className="absolute inset-0 m-auto w-6 h-6 text-brand-500 animate-pulse" />
+                      <div className="w-24 h-24 border-2 border-gold-500 rounded-full animate-spin border-t-transparent"></div>
+                      <Diamond className="absolute inset-0 m-auto w-8 h-8 text-gold-500 animate-pulse" />
                     </div>
-                    <div className="space-y-2">
-                      <h4 className="text-white font-serif text-2xl italic tracking-wide">Processing your vision</h4>
-                      <p className="text-brand-600 text-xs font-bold uppercase tracking-[0.3em]">Estimated completion: 15s</p>
+                    <div className="space-y-4">
+                      <h4 className="text-white font-serif text-3xl italic font-bold tracking-tight">Architectural Synthesis</h4>
+                      <div className="flex items-center justify-center space-x-3">
+                         <div className="h-px w-8 bg-gold-500/40"></div>
+                         <p className="text-gold-500 text-[10px] font-black uppercase tracking-[0.5em]">Delivering Vision</p>
+                         <div className="h-px w-8 bg-gold-500/40"></div>
+                      </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-6 flex flex-col items-center opacity-40 group-hover:opacity-60 transition-opacity">
-                    <div className="w-24 h-24 rounded-full border-2 border-dashed border-brand-800 flex items-center justify-center">
-                      <Sparkles className="w-10 h-10" />
+                  <div className="space-y-8 flex flex-col items-center opacity-30 group-hover:opacity-70 transition-all duration-1000">
+                    <div className="w-32 h-32 rounded-[2.5rem] border-2 border-dashed border-gold-500/30 flex items-center justify-center rotate-45 group-hover:rotate-0 transition-transform duration-1000">
+                      <Sparkles className="w-12 h-12 text-gold-500" />
                     </div>
-                    <p className="font-serif italic text-xl">The canvas of your dreams awaits</p>
+                    <div className="space-y-2">
+                       <p className="font-serif italic text-3xl text-white">Your Canvas is Boundless</p>
+                       <p className="text-[9px] uppercase tracking-[0.6em] text-gold-500 font-black">Begin Signature Process</p>
+                    </div>
                   </div>
                 )}
               </div>
