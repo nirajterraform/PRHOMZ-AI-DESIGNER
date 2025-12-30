@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Sparkles, Download, RefreshCw } from 'lucide-react';
+import { Sparkles, Download, ShoppingBag, DollarSign } from 'lucide-react';
 import { generateDesignImage } from '../services/geminiService';
 import { AspectRatio, GeneratedImage } from '../types';
 import { Button } from './Button';
+import { ShopLookModal } from './ShopLookModal';
 
 interface GeneratorProps {
   onImageGenerated: (image: GeneratedImage) => void;
@@ -11,8 +12,17 @@ interface GeneratorProps {
 export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
+  const [budget, setBudget] = useState(5000);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [isShopOpen, setIsShopOpen] = useState(false);
+
+  const getBudgetTier = (val: number) => {
+    if (val < 2000) return 'Essential';
+    if (val < 10000) return 'Standard';
+    if (val < 25000) return 'Premium';
+    return 'Luxury';
+  };
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +30,10 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
 
     setIsGenerating(true);
     try {
-      const base64Image = await generateDesignImage(prompt, aspectRatio);
+      const budgetContext = `The project budget is approximately $${budget.toLocaleString()} (${getBudgetTier(budget)} tier). Ensure the materials, furniture, and finishes reflect this budget level.`;
+      const fullPrompt = `${prompt}. ${budgetContext}`;
+      
+      const base64Image = await generateDesignImage(fullPrompt, aspectRatio);
       setCurrentImage(base64Image);
       
       const newImage: GeneratedImage = {
@@ -63,9 +76,34 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="E.g., A minimalist living room with floor-to-ceiling windows overlooking a forest, warm lighting, beige sectional sofa..."
+                placeholder="E.g., A minimalist living room with floor-to-ceiling windows overlooking a forest..."
                 className="w-full h-32 bg-brand-950 border border-brand-700 rounded-lg p-4 text-white placeholder-brand-600 focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
               />
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-end">
+                <label className="text-sm font-medium text-brand-200">Project Budget</label>
+                <span className="text-brand-400 text-xs font-mono bg-brand-950 px-2 py-1 rounded border border-brand-800">
+                  {getBudgetTier(budget)}
+                </span>
+              </div>
+              <div className="space-y-2">
+                <input 
+                  type="range" 
+                  min="500" 
+                  max="50000" 
+                  step="500"
+                  value={budget}
+                  onChange={(e) => setBudget(parseInt(e.target.value))}
+                  className="w-full h-1.5 bg-brand-800 rounded-lg appearance-none cursor-pointer accent-brand-500"
+                />
+                <div className="flex justify-between text-[10px] text-brand-500 font-bold uppercase tracking-wider">
+                  <span>$500</span>
+                  <span className="text-brand-300 font-mono text-sm">${budget.toLocaleString()}{budget === 50000 ? '+' : ''}</span>
+                  <span>$50,000+</span>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -100,7 +138,6 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
             </Button>
           </form>
 
-          {/* Inspiration Tags */}
           <div className="flex flex-wrap gap-2">
             {['Modern Rustic', 'Scandinavian', 'Industrial Loft', 'Japandi', 'Art Deco'].map(tag => (
               <button
@@ -122,11 +159,18 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
                 alt="Generated Design" 
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4">
-                <Button variant="secondary" onClick={downloadImage}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </Button>
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center space-y-4">
+                 <Button 
+                    onClick={() => setIsShopOpen(true)}
+                    className="bg-white text-brand-900 hover:bg-brand-100 hover:text-brand-900 border-none shadow-xl transform hover:scale-105 transition-all"
+                  >
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                    Shop This Look
+                  </Button>
+                  <Button variant="secondary" onClick={downloadImage}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
               </div>
             </div>
           ) : (
@@ -134,7 +178,7 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
               {isGenerating ? (
                 <div className="animate-pulse space-y-4">
                   <div className="w-16 h-16 bg-brand-800 rounded-full mx-auto"></div>
-                  <div className="text-sm">Creating your masterpiece...</div>
+                  <div className="text-sm font-medium">Crafting for ${budget.toLocaleString()} budget...</div>
                 </div>
               ) : (
                 <>
@@ -146,6 +190,14 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
           )}
         </div>
       </div>
+
+      {currentImage && (
+        <ShopLookModal 
+          image={currentImage} 
+          isOpen={isShopOpen} 
+          onClose={() => setIsShopOpen(false)} 
+        />
+      )}
     </div>
   );
 };

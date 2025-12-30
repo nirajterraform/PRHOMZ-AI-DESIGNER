@@ -20,4 +20,12 @@ export interface ChatMessage {
   isLoading?: boolean;
 }
 
+export interface ProductItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  colors: string[];
+}
+
 export type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
