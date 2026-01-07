@@ -1,76 +1,53 @@
 
 import React from 'react';
 import { GeneratedImage } from '../types';
-import { Download, Calendar, ArrowUpRight, Maximize2 } from 'lucide-react';
+import { Download, Calendar, ArrowUpRight, Maximize2, Trash2 } from 'lucide-react';
 
-interface GalleryProps {
-  images: GeneratedImage[];
-}
+interface GalleryProps { images: GeneratedImage[]; }
 
 export const Gallery: React.FC<GalleryProps> = ({ images }) => {
   if (images.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-brand-700 animate-fade-in">
-        <div className="w-20 h-20 rounded-full border border-brand-800 flex items-center justify-center mb-6 opacity-40">
-           <Maximize2 size={30} />
+      <div className="flex flex-col items-center justify-center h-[60vh] text-google-gray animate-fade">
+        <div className="w-20 h-20 rounded-full border border-google-border flex items-center justify-center mb-6 opacity-60 bg-google-surface">
+           <Maximize2 size={24} className="text-google-blue" />
         </div>
-        <h3 className="font-serif text-3xl italic mb-3">Portfolio Empty</h3>
-        <p className="text-xs font-bold uppercase tracking-[0.3em]">Initialize a render to build your history</p>
+        <h3 className="text-2xl font-medium text-google-dark mb-2">No iterations found</h3>
+        <p className="text-sm font-medium uppercase tracking-widest text-google-gray">Generate a remodel to begin your archive</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-12 pb-20 animate-fade-in">
-       <div className="space-y-3">
-        <h2 className="text-5xl font-serif font-bold text-white tracking-tight">Your <span className="italic text-brand-400">Archive</span></h2>
-        <div className="flex items-center space-x-3 text-brand-500">
-          <div className="h-px w-10 bg-brand-500"></div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.4em]">{images.length} Captured Visualizations</p>
-        </div>
+    <div className="space-y-12 pb-20 animate-fade">
+      <div className="space-y-2">
+        <h2 className="text-3xl font-semibold text-google-dark">Spatial Archive</h2>
+        <p className="text-sm font-medium text-google-gray uppercase tracking-widest">{images.length} Captured designs</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
         {images.slice().reverse().map((img) => (
-          <div key={img.id} className="group glass-card rounded-[2rem] overflow-hidden border border-white/5 hover:border-brand-500/40 transition-all duration-500 hover:shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
-            <div className="aspect-[4/3] w-full overflow-hidden bg-brand-950 relative">
-              <img 
-                src={img.url} 
-                alt={img.prompt} 
-                className="w-full h-full object-cover transition-transform duration-1000 cubic-bezier(0.16, 1, 0.3, 1) group-hover:scale-110" 
-              />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center space-x-4">
-                 <a 
-                    href={img.url} 
-                    download={`prhomz-${img.id}.png`}
-                    className="p-4 bg-white text-brand-950 rounded-full hover:bg-brand-100 transition-all transform translate-y-4 group-hover:translate-y-0 duration-500 hover:scale-110 shadow-2xl"
-                  >
-                    <Download size={20} />
-                  </a>
-                  <button className="p-4 bg-brand-500 text-white rounded-full hover:bg-brand-400 transition-all transform translate-y-6 group-hover:translate-y-0 duration-700 hover:scale-110 shadow-2xl">
-                    <Maximize2 size={20} />
-                  </button>
+          <div key={img.id} className="group bg-google-surface rounded-2xl overflow-hidden border border-google-border hover:border-google-blue transition-all duration-300 shadow-md hover:shadow-xl">
+            <div className="aspect-[4/3] w-full overflow-hidden bg-google-bg relative">
+              <img src={img.url} alt={img.prompt} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90" />
+              <div className="absolute inset-0 bg-google-bg/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4">
+                 <a href={img.url} download={`prhomz-${img.id}.png`} className="p-3 bg-google-dark text-google-bg rounded-full hover:bg-white transition-all shadow-lg"><Download size={20} /></a>
+                 <button className="p-3 bg-google-dark text-google-bg rounded-full hover:bg-white transition-all shadow-lg"><Maximize2 size={20} /></button>
               </div>
             </div>
             
-            <div className="p-8 space-y-4">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center space-x-2 text-[10px] font-bold uppercase tracking-widest text-brand-500">
-                  <span className="px-2 py-0.5 border border-brand-800 rounded">{img.mode}</span>
-                </div>
-                <div className="flex items-center space-x-1.5 text-brand-600 text-[10px] font-bold uppercase tracking-widest">
-                  <Calendar size={10} />
-                  <span>{new Date(img.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                </div>
+            <div className="p-6 space-y-4">
+              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-google-gray">
+                <span className="px-2 py-0.5 bg-google-bg border border-google-border rounded-md text-google-blue">{img.mode}</span>
+                <div className="flex items-center space-x-1"><Calendar size={12} /><span>{new Date(img.timestamp).toLocaleDateString()}</span></div>
               </div>
               
-              <div className="space-y-1">
-                <p className="text-brand-100 font-serif text-xl line-clamp-2 leading-snug group-hover:text-white transition-colors">
-                  {img.prompt}
-                </p>
-                <button className="text-[10px] text-brand-500 font-bold uppercase tracking-widest flex items-center group/btn hover:text-brand-300 transition-colors">
-                   View Prompt Details <ArrowUpRight className="ml-1 w-3 h-3 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
-                </button>
+              <div className="space-y-3">
+                <p className="text-google-dark text-sm line-clamp-2 leading-snug group-hover:text-google-blue transition-colors">{img.prompt}</p>
+                <div className="flex items-center justify-between pt-4 border-t border-google-border">
+                   <button className="text-[10px] text-google-gray font-bold uppercase tracking-widest flex items-center hover:text-google-blue transition-all">Details <ArrowUpRight className="ml-1 w-3 h-3" /></button>
+                   <button className="text-google-gray hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
+                </div>
               </div>
             </div>
           </div>
