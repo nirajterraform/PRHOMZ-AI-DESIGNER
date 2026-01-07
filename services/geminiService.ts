@@ -163,11 +163,14 @@ export const generateProductList = async (base64Image: string): Promise<ProductI
     });
 
     const items = JSON.parse(response.text || "[]");
-    return items.map((item: any, index: number) => ({
-      ...item,
-      id: item.id || `prod-${Date.now()}-${index}`,
-      imageUrl: `https://loremflickr.com/300/300/${encodeURIComponent(item.searchQuery || item.name)}`
-    }));
+    return items.map((item: any, index: number) => {
+      const searchKeywords = (item.searchQuery || item.name).replace(/\s+/g, ',');
+      return {
+        ...item,
+        id: item.id || `prod-${Date.now()}-${index}`,
+        imageUrl: `https://loremflickr.com/300/300/furniture,interior,${encodeURIComponent(searchKeywords)}`
+      };
+    });
   } catch (error) {
     console.error("Product detection error:", error);
     return [];
@@ -208,10 +211,11 @@ export const swapProduct = async (base64Image: string, currentProduct: ProductIt
     });
 
     const item = JSON.parse(response.text || "{}");
+    const searchKeywords = (item.searchQuery || item.name).replace(/\s+/g, ',');
     return { 
       ...item, 
       id: `swap-${Date.now()}`,
-      imageUrl: `https://loremflickr.com/300/300/${encodeURIComponent(item.searchQuery || item.name)}`
+      imageUrl: `https://loremflickr.com/300/300/furniture,interior,${encodeURIComponent(searchKeywords)}`
     };
   } catch (error) {
     console.error("Swap error:", error);

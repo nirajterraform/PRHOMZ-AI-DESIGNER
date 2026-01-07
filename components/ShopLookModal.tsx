@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { X, ShoppingBag, Check, CreditCard, Loader2, RefreshCw, Trash2, Package, Bookmark, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, ShoppingBag, Check, CreditCard, Loader2, RefreshCw, Trash2, Package, Bookmark, AlertCircle, Info, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { ProductItem } from '../types';
 import { generateProductList, swapProduct } from '../services/geminiService';
 import { Button } from './Button';
@@ -9,15 +9,17 @@ interface ShopLookModalProps {
   image: string;
   isOpen: boolean;
   onClose: () => void;
+  budget?: number;
 }
 
-export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onClose }) => {
+export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onClose, budget }) => {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = useState<'checkout' | 'save' | null>(null);
   const [success, setSuccess] = useState<'checkout' | 'save' | null>(null);
   const [swappingIds, setSwappingIds] = useState<Set<string>>(new Set());
+  const [filterByBudget, setFilterByBudget] = useState(false);
 
   useEffect(() => {
     if (isOpen && image) {
@@ -28,6 +30,7 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
       setSuccess(null);
       setIsProcessing(null);
       setSwappingIds(new Set());
+      setFilterByBudget(false);
     }
   }, [isOpen, image]);
 
@@ -46,13 +49,29 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
     }
   };
 
+  // Determine which products fit within the budget using greedy selection
+  const budgetOptimizedProducts = useMemo(() => {
+    if (budget === undefined) return products;
+    let runningTotal = 0;
+    return products.filter(product => {
+      if (runningTotal + product.price <= budget) {
+        runningTotal += product.price;
+        return true;
+      }
+      return false;
+    });
+  }, [products, budget]);
+
+  const visibleProducts = filterByBudget ? budgetOptimizedProducts : products;
+  const hiddenCount = products.length - budgetOptimizedProducts.length;
+
   const handleColorSelect = (productId: string, color: string) => {
     setSelections(prev => ({ ...prev, [productId]: color }));
     setProducts(prev => prev.map(p => {
       if (p.id === productId) {
         return {
           ...p,
-          imageUrl: `https://loremflickr.com/300/300/${encodeURIComponent(p.name + " " + color + " furniture")}`
+          imageUrl: `https://loremflickr.com/300/300/furniture,interior,${encodeURIComponent((p.name + " " + color).replace(/\s+/g, ','))}`
         };
       }
       return p;
@@ -92,7 +111,9 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
 
   if (!isOpen) return null;
 
-  const totalPrice = products.reduce((sum, item) => sum + item.price, 0);
+  const currentTotal = visibleProducts.reduce((sum, item) => sum + item.price, 0);
+  const actualTotal = products.reduce((sum, item) => sum + item.price, 0);
+  const isOverBudget = budget !== undefined && actualTotal > budget;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 overflow-hidden">
@@ -111,6 +132,12 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
             <p className="text-xs text-google-gray leading-relaxed">
               Our AI detected these specific pieces in your render. You can purchase them now or save them to your profile.
             </p>
+            {budget !== undefined && (
+              <div className="pt-4 border-t border-google-border">
+                <span className="text-[10px] font-bold text-google-gray uppercase tracking-widest block mb-1">Your Project Budget</span>
+                <span className="text-lg font-bold text-google-blue">${budget.toLocaleString()}</span>
+              </div>
+            )}
           </div>
           
           <div className="rounded-xl overflow-hidden border border-google-border aspect-square relative group">
@@ -129,9 +156,22 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
         {/* Content */}
         <div className="flex-1 flex flex-col h-full bg-google-bg overflow-hidden">
           <div className="p-6 border-b border-google-border flex items-center justify-between">
-            <h3 className="text-lg font-bold text-google-dark">Shopping List</h3>
+            <div className="flex flex-col">
+              <h3 className="text-lg font-bold text-google-dark">Shopping List</h3>
+              <div className="flex items-center space-x-2 mt-1">
+                <button 
+                  onClick={() => setFilterByBudget(!filterByBudget)}
+                  className={`flex items-center space-x-1.5 px-2 py-0.5 rounded-md border transition-all ${filterByBudget ? 'bg-google-blue/10 border-google-blue text-google-blue' : 'bg-google-surface border-google-border text-google-gray hover:text-google-dark'}`}
+                >
+                  {filterByBudget ? <ShieldCheck size={12} /> : <Eye size={12} />}
+                  <span className="text-[9px] font-bold uppercase tracking-tighter">
+                    {filterByBudget ? 'Budget Guard Active' : 'Showing All Items'}
+                  </span>
+                </button>
+              </div>
+            </div>
             <span className="text-xs font-bold text-google-blue bg-google-blue/10 px-3 py-1 rounded-full border border-google-blue/20">
-              {products.length} Items Identified
+              {visibleProducts.length} Items
             </span>
           </div>
 
@@ -156,7 +196,7 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
                 </p>
                 <Button onClick={onClose} variant="secondary" className="rounded-full px-10">Return to Studio</Button>
               </div>
-            ) : products.length === 0 ? (
+            ) : visibleProducts.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40">
                 <ShoppingBag size={48} />
                 <p className="text-xs font-bold uppercase tracking-widest">Your list is currently empty</p>
@@ -164,14 +204,34 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
               </div>
             ) : (
               <div className="space-y-4">
-                {products.map((item) => (
+                {isOverBudget && !filterByBudget && (
+                  <div className="bg-red-400/10 border border-red-400/30 p-4 rounded-xl flex items-center justify-between animate-fade mb-6">
+                    <div className="flex items-center space-x-3">
+                      <AlertCircle size={20} className="text-red-400 shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-red-400 uppercase tracking-widest">Budget Exceeded</p>
+                        <p className="text-[11px] text-google-gray leading-tight mt-0.5">Total selection is ${actualTotal.toLocaleString()}. Budget is ${budget?.toLocaleString()}.</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setFilterByBudget(true)}
+                      className="px-3 py-1.5 bg-red-400/20 text-red-400 text-[10px] font-bold uppercase rounded-lg border border-red-400/30 hover:bg-red-400 hover:text-white transition-all"
+                    >
+                      Apply Budget Guard
+                    </button>
+                  </div>
+                )}
+                {visibleProducts.map((item) => (
                   <div key={item.id} className="bg-google-surface p-4 rounded-xl border border-google-border flex flex-col sm:flex-row gap-6 animate-fade hover:border-google-blue/40 transition-colors group">
                     <div className="w-full sm:w-32 h-32 flex-shrink-0 bg-google-bg rounded-lg overflow-hidden border border-google-border relative">
                         <img 
-                          src={item.imageUrl || `https://placehold.co/300x300/1e1e1e/8ab4f8?text=${encodeURIComponent(item.name)}`} 
+                          src={item.imageUrl} 
                           alt={item.name} 
-                          className="w-full h-full object-cover" 
+                          className="w-full h-full object-cover bg-google-surface" 
                           key={item.imageUrl}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://placehold.co/300x300/1e1e1e/8ab4f8?text=${encodeURIComponent(item.name)}`;
+                          }}
                         />
                         {swappingIds.has(item.id) && (
                           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
@@ -216,19 +276,41 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
                     </div>
                   </div>
                 ))}
+
+                {filterByBudget && hiddenCount > 0 && (
+                  <div className="p-4 bg-google-surface border border-dashed border-google-border rounded-xl flex items-center justify-center space-x-3 opacity-60">
+                    <EyeOff size={16} />
+                    <span className="text-xs font-medium text-google-gray">{hiddenCount} products hidden by Budget Guard.</span>
+                    <button 
+                      onClick={() => setFilterByBudget(false)}
+                      className="text-xs font-bold text-google-blue hover:underline"
+                    >
+                      Show all items
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* New Interactive Footer */}
-          {!loading && !success && products.length > 0 && (
+          {!loading && !success && visibleProducts.length > 0 && (
             <div className="p-6 border-t border-google-border bg-google-surface shadow-2xl">
               <div className="flex justify-between items-center mb-6 px-2">
                 <div>
-                  <span className="text-google-gray font-bold text-[10px] uppercase tracking-widest block">Subtotal</span>
-                  <span className="text-2xl font-bold text-google-dark">${totalPrice.toLocaleString()}</span>
+                  <span className={`font-bold text-[10px] uppercase tracking-widest block ${(isOverBudget && !filterByBudget) ? 'text-red-400' : 'text-google-gray'}`}>
+                    {(isOverBudget && !filterByBudget) ? 'Subtotal (Exceeds Budget)' : 'Current Subtotal'}
+                  </span>
+                  <span className={`text-2xl font-bold ${(isOverBudget && !filterByBudget) ? 'text-red-400' : 'text-google-dark'}`}>
+                    ${currentTotal.toLocaleString()}
+                  </span>
                 </div>
                 <div className="text-right hidden sm:block">
+                  <div className="flex items-center space-x-1 text-google-blue mb-1 justify-end">
+                    <Info size={12} />
+                    <span className="text-[10px] font-bold uppercase tracking-tighter">
+                      {filterByBudget ? 'Optimized for Budget' : 'Full Selection View'}
+                    </span>
+                  </div>
                   <span className="text-google-gray text-[10px] font-medium uppercase tracking-tight">Concierge Delivery Included</span>
                 </div>
               </div>
@@ -245,11 +327,11 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
                 </Button>
                 <Button 
                   onClick={() => handleAction('checkout')} 
-                  className="flex-[1.5] h-14 rounded-xl text-md font-bold shadow-xl bg-google-blue" 
+                  className={`flex-[1.5] h-14 rounded-xl text-md font-bold shadow-xl ${(isOverBudget && !filterByBudget) ? 'bg-google-border cursor-not-allowed opacity-50' : 'bg-google-blue'}`}
                   isLoading={isProcessing === 'checkout'}
-                  disabled={!!isProcessing}
+                  disabled={!!isProcessing || (isOverBudget && !filterByBudget)}
                 >
-                  <CreditCard className="mr-2 w-5 h-5" /> Checkout Now
+                  <CreditCard className="mr-2 w-5 h-5" /> {(isOverBudget && !filterByBudget) ? 'Limit Exceeded' : 'Checkout Now'}
                 </Button>
               </div>
               

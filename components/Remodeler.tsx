@@ -185,7 +185,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated }) => {
         </div>
       </div>
 
-      {resultImage && <ShopLookModal image={resultImage} isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} />}
+      {resultImage && <ShopLookModal image={resultImage} isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} budget={budget} />}
     </div>
   );
 };

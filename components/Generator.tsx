@@ -14,6 +14,7 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
   const [prompt, setPrompt] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<string>('');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
+  const [budget, setBudget] = useState(10000); // Default budget for generation
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
   const [isShopOpen, setIsShopOpen] = useState(false);
@@ -76,44 +77,65 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
             </button>
           </form>
 
-          {/* Style Presets */}
-          <div className="space-y-4">
-             <div className="flex items-center space-x-2 text-neutral-500 mb-4">
-                <Box size={14} />
-                <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Design Manifestos</span>
-             </div>
-             <div className="flex flex-wrap gap-3">
-                {DESIGN_PRESETS.map((style) => (
-                  <button
-                    key={style.id}
-                    onClick={() => toggleStyle(style.id)}
-                    className={`
-                      px-6 py-2.5 text-[9px] font-bold uppercase tracking-widest border transition-all rounded-sm
-                      ${selectedStyle === style.id 
-                        ? 'bg-google-blue border-google-blue text-google-bg shadow-[0_0_20px_rgba(138,180,248,0.2)]' 
-                        : 'bg-transparent border-google-border text-neutral-500 hover:border-white/30 hover:text-white'}
-                    `}
-                  >
-                    {style.label}
-                  </button>
-                ))}
-             </div>
-          </div>
-          
-          <div className="flex space-x-8 pt-4">
-            <div className="flex items-center space-x-2 text-neutral-500 mr-4">
-              <Zap size={12} />
-              <span className="text-[9px] font-bold uppercase tracking-widest">Ratio:</span>
+          {/* Style Presets and Config */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="space-y-6">
+               <div className="flex items-center space-x-2 text-neutral-500">
+                  <Box size={14} />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Design Manifestos</span>
+               </div>
+               <div className="flex flex-wrap gap-3">
+                  {DESIGN_PRESETS.map((style) => (
+                    <button
+                      key={style.id}
+                      onClick={() => toggleStyle(style.id)}
+                      className={`
+                        px-6 py-2.5 text-[9px] font-bold uppercase tracking-widest border transition-all rounded-sm
+                        ${selectedStyle === style.id 
+                          ? 'bg-google-blue border-google-blue text-google-bg shadow-[0_0_20px_rgba(138,180,248,0.2)]' 
+                          : 'bg-transparent border-google-border text-neutral-500 hover:border-white/30 hover:text-white'}
+                      `}
+                    >
+                      {style.label}
+                    </button>
+                  ))}
+               </div>
             </div>
-            {(['16:9', '1:1', '9:16'] as AspectRatio[]).map((ratio) => (
-              <button
-                key={ratio}
-                onClick={() => setAspectRatio(ratio)}
-                className={`text-[9px] font-bold uppercase tracking-widest transition-all ${aspectRatio === ratio ? 'text-google-blue border-b border-google-blue pb-1' : 'text-neutral-500 hover:text-white'}`}
-              >
-                {ratio}
-              </button>
-            ))}
+
+            <div className="space-y-8">
+               <div className="space-y-4">
+                  <div className="flex items-center space-x-2 text-neutral-500">
+                    <Zap size={14} />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Canvas Ratio</span>
+                  </div>
+                  <div className="flex space-x-8">
+                    {(['16:9', '1:1', '9:16'] as AspectRatio[]).map((ratio) => (
+                      <button
+                        key={ratio}
+                        onClick={() => setAspectRatio(ratio)}
+                        className={`text-[9px] font-bold uppercase tracking-widest transition-all ${aspectRatio === ratio ? 'text-google-blue border-b border-google-blue pb-1' : 'text-neutral-500 hover:text-white'}`}
+                      >
+                        {ratio}
+                      </button>
+                    ))}
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                  <div className="flex justify-between items-center text-neutral-500">
+                    <div className="flex items-center space-x-2">
+                      <ShoppingBag size={14} />
+                      <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Estimated Budget</span>
+                    </div>
+                    <span className="text-sm font-bold text-google-blue">${budget.toLocaleString()}</span>
+                  </div>
+                  <input 
+                    type="range" min="1000" max="100000" step="1000" value={budget}
+                    onChange={(e) => setBudget(parseInt(e.target.value))}
+                    className="w-full accent-google-blue"
+                  />
+               </div>
+            </div>
           </div>
         </div>
 
@@ -145,7 +167,7 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
         </div>
       </div>
 
-      {currentImage && <ShopLookModal image={currentImage} isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} />}
+      {currentImage && <ShopLookModal image={currentImage} isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} budget={budget} />}
     </div>
   );
 };
