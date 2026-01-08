@@ -5,15 +5,22 @@ import { Remodeler } from './components/Remodeler';
 import { Assistant } from './components/Assistant';
 import { Gallery } from './components/Gallery';
 import { AdminDashboard } from './components/AdminDashboard';
-import { AppMode, GeneratedImage, UserAccount } from './types';
-import { ChevronDown, Search, HelpCircle, Settings, Grid } from 'lucide-react';
+import { AppMode, GeneratedImage, UserAccount, ProductItem } from './types';
+import { ChevronDown, Search, HelpCircle, Settings, Grid, X, Loader2, ShoppingCart } from 'lucide-react';
 import { fetchUserDirectory } from './services/dataService';
+import { searchCatalog } from './services/geminiService';
 
 function App() {
   const [currentMode, setCurrentMode] = useState<AppMode>(AppMode.REMODEL);
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [activeEditImage, setActiveEditImage] = useState<string | null>(null);
+  
+  // Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<ProductItem[] | null>(null);
 
   useEffect(() => {
     const initUser = async () => {
@@ -27,11 +34,45 @@ function App() {
     setGeneratedImages(prev => [...prev, image]);
   };
 
+  const handleEditFromGallery = (imageUrl: string) => {
+    setActiveEditImage(imageUrl);
+    setCurrentMode(AppMode.REMODEL);
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    
+    setIsSearching(true);
+    try {
+      const results = await searchCatalog(searchQuery);
+      setSearchResults(results);
+    } catch (error) {
+      console.error("Search failed", error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults(null);
+  };
+
   const renderContent = () => {
     switch (currentMode) {
-      case AppMode.REMODEL: return <Remodeler onImageGenerated={handleImageGenerated} />;
+      case AppMode.REMODEL: 
+        return <Remodeler 
+          onImageGenerated={handleImageGenerated} 
+          initialImage={activeEditImage} 
+          onClearInitial={() => setActiveEditImage(null)}
+        />;
       case AppMode.ASSISTANT: return <Assistant />;
-      case AppMode.GALLERY: return <Gallery images={generatedImages} />;
+      case AppMode.GALLERY: 
+        return <Gallery 
+          images={generatedImages} 
+          onEdit={handleEditFromGallery}
+        />;
       case AppMode.ADMIN: return <AdminDashboard />;
       default: return <Remodeler onImageGenerated={handleImageGenerated} />;
     }
@@ -41,30 +82,41 @@ function App() {
     <div className="min-h-screen bg-google-bg text-google-dark font-sans flex flex-col md:flex-row">
       <Navigation 
         currentMode={currentMode} 
-        onModeChange={setCurrentMode}
+        onModeChange={(mode) => {
+          setCurrentMode(mode);
+          // If switching to remodel via nav (not via edit button), clear active edit
+          if (mode === AppMode.REMODEL) setActiveEditImage(null);
+        }}
         isOpen={isNavOpen}
         setIsOpen={setIsNavOpen}
         userRole={currentUser?.role || 'Client'}
       />
 
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-20 flex items-center justify-between px-6 md:px-10 border-b border-google-border bg-google-bg/95 backdrop-blur-xl sticky top-0 z-30">
           <div className="flex items-center flex-1">
-            {/* MOBILE BRANDING - Refined to just PRHOMZ AI */}
             <div className="md:hidden flex flex-col ml-12">
                <h1 className="text-lg font-serif italic tracking-tighter text-google-dark leading-none">
                  PRHOMZ <span className="text-google-blue not-italic font-sans font-black">AI</span>
                </h1>
             </div>
 
-            <div className="hidden md:flex flex-1 max-w-xl bg-google-surface rounded-2xl px-5 py-2.5 items-center border border-google-border shadow-inner focus-within:border-google-blue/50 transition-all">
+            <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl bg-google-surface rounded-2xl px-5 py-2.5 items-center border border-google-border shadow-inner focus-within:border-google-blue/50 transition-all relative">
               <Search size={16} className="text-google-gray mr-4" />
               <input 
                 type="text" 
-                placeholder="Search Atelier designs & furniture" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search PRHOMZ Catalog for furniture..." 
                 className="bg-transparent border-none focus:outline-none text-sm w-full text-google-dark placeholder-google-gray font-medium"
               />
-            </div>
+              {isSearching && <Loader2 size={16} className="animate-spin text-google-blue absolute right-4" />}
+              {!isSearching && searchQuery && (
+                <button type="button" onClick={clearSearch} className="text-google-gray hover:text-google-dark absolute right-4">
+                  <X size={16} />
+                </button>
+              )}
+            </form>
           </div>
           
           <div className="flex items-center space-x-3 ml-4">
@@ -90,6 +142,66 @@ function App() {
             </div>
           </div>
         </header>
+
+        {/* Search Results Overlay */}
+        {searchResults && (
+          <div className="fixed inset-0 top-20 z-40 bg-google-bg/95 backdrop-blur-md overflow-y-auto animate-fade">
+            <div className="max-w-6xl mx-auto p-8 md:p-12">
+              <div className="flex justify-between items-end mb-12">
+                <div>
+                  <h2 className="text-3xl font-bold text-google-dark">Catalog Results</h2>
+                  <p className="text-google-gray text-xs font-bold uppercase tracking-widest mt-2">Showing matches for "{searchQuery}"</p>
+                </div>
+                <button 
+                  onClick={clearSearch}
+                  className="px-6 py-2.5 rounded-full border border-google-border text-[10px] font-bold uppercase tracking-widest hover:bg-google-surface transition-all flex items-center"
+                >
+                  <X size={14} className="mr-2" /> Close Results
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {searchResults.map((item) => (
+                  <div key={item.id} className="group bg-google-surface rounded-2xl border border-google-border overflow-hidden hover:border-google-blue transition-all shadow-sm flex flex-col">
+                    <div className="aspect-square bg-google-bg relative overflow-hidden">
+                      <img 
+                        src={item.imageUrl} 
+                        alt={item.name} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `https://placehold.co/400x400/1e1e1e/8ab4f8?text=${encodeURIComponent(item.name)}`;
+                        }}
+                      />
+                      <div className="absolute top-4 right-4">
+                        <span className="bg-google-blue/90 text-google-bg px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                          ${item.price.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-6 flex-1 flex flex-col justify-between">
+                      <div className="space-y-2 mb-6">
+                        <h4 className="font-bold text-google-dark text-lg leading-tight">{item.name}</h4>
+                        <p className="text-xs text-google-gray leading-relaxed line-clamp-3">{item.description}</p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button className="flex-1 bg-google-blue text-google-bg py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all flex items-center justify-center">
+                          <ShoppingCart size={14} className="mr-2" /> Add to project
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {searchResults.length === 0 && (
+                <div className="py-20 text-center opacity-40">
+                  <Search size={48} className="mx-auto mb-4" />
+                  <p className="text-sm font-bold uppercase tracking-widest">No matching artifacts found in catalog</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-6 md:p-12 lg:p-16 custom-scrollbar">
           {renderContent()}

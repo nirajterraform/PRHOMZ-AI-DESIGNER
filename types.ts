@@ -12,6 +12,8 @@ export interface GeneratedImage {
   prompt: string;
   mode: 'creation' | 'edit';
   timestamp: number;
+  projectName?: string;
+  category?: string;
 }
 
 export interface ChatMessage {

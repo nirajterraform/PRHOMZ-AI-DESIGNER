@@ -1,6 +1,6 @@
 
-import React, { useState, useRef } from 'react';
-import { Upload, Download, ShoppingBag, Plus, ImageIcon, CheckCircle2, ChevronRight, Wand2, ShieldCheck } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, Download, ShoppingBag, Plus, ImageIcon, CheckCircle2, ChevronRight, Wand2, ShieldCheck, RefreshCcw, Layout } from 'lucide-react';
 import { remodelImage } from '../services/geminiService';
 import { GeneratedImage, DESIGN_PRESETS } from '../types';
 import { Button } from './Button';
@@ -8,18 +8,28 @@ import { ShopLookModal } from './ShopLookModal';
 
 interface RemodelerProps {
   onImageGenerated: (image: GeneratedImage) => void;
+  initialImage?: string | null;
+  onClearInitial?: () => void;
 }
 
-export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated }) => {
+export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialImage, onClearInitial }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(initialImage || null);
   const [instruction, setInstruction] = useState('');
+  const [projectName, setProjectName] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<string>('');
   const [budget, setBudget] = useState(5000);
   const [isProcessing, setIsProcessing] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [isShopOpen, setIsShopOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (initialImage) {
+      setPreviewUrl(initialImage);
+      setResultImage(null);
+    }
+  }, [initialImage]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -29,6 +39,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated }) => {
       reader.onload = (ev) => {
         setPreviewUrl(ev.target?.result as string);
         setResultImage(null);
+        if (onClearInitial) onClearInitial();
       };
       reader.readAsDataURL(file);
     }
@@ -47,7 +58,8 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated }) => {
         url: outputBase64,
         prompt: fullInstruction,
         mode: 'edit',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        projectName: projectName || 'Untitled Iteration'
       });
     } catch (error) {
       alert("Something went wrong with the remodel. Please ensure your prompt focuses on home design.");
@@ -56,20 +68,54 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated }) => {
     }
   };
 
+  const handleReset = () => {
+    setPreviewUrl(null);
+    setResultImage(null);
+    setSelectedFile(null);
+    setProjectName('');
+    if (onClearInitial) onClearInitial();
+  };
+
   return (
     <div className="max-w-6xl mx-auto animate-fade">
-      <header className="mb-12">
-        <div className="flex items-center space-x-2 mb-2">
-          <ShieldCheck size={16} className="text-google-blue" />
-          <span className="text-[10px] font-bold text-google-blue uppercase tracking-widest">Industry Specific Engine</span>
+      <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center space-x-2 mb-2">
+            <ShieldCheck size={16} className="text-google-blue" />
+            <span className="text-[10px] font-bold text-google-blue uppercase tracking-widest">Industry Specific Engine</span>
+          </div>
+          <h2 className="text-3xl font-semibold text-google-dark mb-2">
+            {initialImage ? 'Refine Iteration' : 'Remodel your Space'}
+          </h2>
+          <p className="text-google-gray font-medium">Let PRHOMZ AI Designer curate Furnishings and Decor Changes</p>
         </div>
-        <h2 className="text-3xl font-semibold text-google-dark mb-2">Remodel your Space</h2>
-        <p className="text-google-gray font-medium">Let PRHOMZ AI Designer curate Furnishings and Decor Changes</p>
+        {previewUrl && (
+          <button 
+            onClick={handleReset}
+            className="flex items-center space-x-2 text-[10px] font-bold uppercase tracking-widest text-google-gray hover:text-google-dark transition-colors"
+          >
+            <RefreshCcw size={12} />
+            <span>Upload New Photo</span>
+          </button>
+        )}
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Input Panel */}
         <div className="lg:col-span-4 space-y-8">
+          <section className="bg-google-surface border border-google-border rounded-2xl p-6 space-y-4 shadow-sm">
+            <h3 className="text-xs font-bold text-google-gray uppercase tracking-wider flex items-center">
+              <Layout size={14} className="mr-2" /> Project Meta
+            </h3>
+            <input 
+              type="text"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              placeholder="e.g. Master Suite Revamp"
+              className="w-full bg-google-bg border border-google-border rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-google-blue focus:outline-none text-google-dark placeholder-google-gray transition-all"
+            />
+          </section>
+
           <section className="bg-google-surface border border-google-border rounded-2xl overflow-hidden p-6 space-y-6 shadow-sm">
             <h3 className="text-xs font-bold text-google-gray uppercase tracking-wider">Step 1: Upload Room Photo</h3>
             <div 
@@ -80,7 +126,12 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated }) => {
               `}
             >
               {previewUrl ? (
-                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover rounded-lg opacity-90" />
+                <div className="relative w-full h-full group">
+                  <img src={previewUrl} alt="Preview" className="w-full h-full object-cover rounded-lg opacity-90" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg">
+                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">Change Photo</span>
+                  </div>
+                </div>
               ) : (
                 <div className="text-center p-6 space-y-2">
                   <div className="w-12 h-12 bg-google-surface rounded-full flex items-center justify-center mx-auto shadow-sm border border-google-border">
@@ -136,7 +187,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated }) => {
             disabled={!previewUrl || (!instruction.trim() && !selectedStyle)}
           >
             <Wand2 className="w-4 h-4 mr-2" />
-            Apply Transformations
+            {initialImage ? 'Apply Refinements' : 'Apply Transformations'}
           </Button>
         </div>
 

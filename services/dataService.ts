@@ -2,55 +2,64 @@
 import { ProductItem, AnalyticsSummary, UserAccount } from "../types";
 
 /**
- * Mock Service for Shopify and Firebase Integration
- * In a production environment, these would use:
- * - Shopify Admin API (for product sync)
- * - Firebase Firestore (for caching and storage)
- * - Firebase Auth (for user management)
+ * MOCK INVENTORY DATABASE
+ * In production, this would be your synced Shopify/Supplier DB.
  */
+const GLOBAL_INVENTORY: Partial<ProductItem>[] = [
+  {
+    name: "Elowen Velvet Occasional Chair",
+    price: 1850,
+    shopifyId: "7821903", // Real Variant ID
+    stockLevel: 12,
+    description: "Hand-crafted velvet chair with gold-plated legs.",
+    colors: ["Emerald", "Sapphire", "Ruby"]
+  },
+  {
+    name: "Travertine Coffee Table",
+    price: 3400,
+    shopifyId: "9910231",
+    stockLevel: 5,
+    description: "Solid Italian travertine with organic edges.",
+    colors: ["Natural", "Sand", "Ivory"]
+  },
+  {
+    name: "Biedermeier Brass Chandelier",
+    price: 5200,
+    shopifyId: "1230044",
+    stockLevel: 8,
+    description: "Minimalist brass structure with hand-blown glass.",
+    colors: ["Brushed Brass", "Matte Black"]
+  },
+  {
+    name: "Linear Oak Bookshelf",
+    price: 2100,
+    shopifyId: "8823190",
+    stockLevel: 15,
+    description: "Modular oak shelving with hidden mounting.",
+    colors: ["Light Oak", "Walnut", "Blackened Oak"]
+  }
+];
 
-export const fetchShopifyProducts = async (): Promise<ProductItem[]> => {
-  console.log("Connecting to Shopify Storefront...");
-  // Simulated Shopify API Response
-  return [
-    {
-      id: 'shp_1',
-      shopifyId: 'gid://shopify/Product/12345',
-      name: 'Elowen Velvet Occasional Chair',
-      description: 'Hand-crafted velvet chair with gold-plated legs.',
-      price: 1850,
-      colors: ['Emerald', 'Sapphire', 'Ruby'],
-      stockLevel: 12,
-      lastSynced: Date.now()
-    },
-    {
-      id: 'shp_2',
-      shopifyId: 'gid://shopify/Product/67890',
-      name: 'Travertine Coffee Table',
-      description: 'Solid Italian travertine with organic edges.',
-      price: 3400,
-      colors: ['Natural', 'Sand', 'Ivory'],
-      stockLevel: 5,
-      lastSynced: Date.now()
-    },
-    {
-      id: 'shp_3',
-      shopifyId: 'gid://shopify/Product/11223',
-      name: 'Biedermeier Brass Chandelier',
-      description: 'Minimalist brass structure with hand-blown glass.',
-      price: 5200,
-      colors: ['Brushed Brass', 'Chrome', 'Matte Black'],
-      stockLevel: 8,
-      lastSynced: Date.now()
-    }
-  ];
+/**
+ * Simulates a search against the real Shopify catalog.
+ * It tries to match the AI's "Search Query" to real SKUs.
+ */
+export const findMatchingInventory = async (aiDetectedName: string): Promise<Partial<ProductItem>> => {
+  // Simple fuzzy match simulation
+  const match = GLOBAL_INVENTORY.find(item => 
+    item.name?.toLowerCase().includes(aiDetectedName.split(' ')[0].toLowerCase()) ||
+    aiDetectedName.toLowerCase().includes(item.name?.toLowerCase() || "")
+  );
+
+  return match || {
+    name: aiDetectedName,
+    shopifyId: "external_referral",
+    stockLevel: 0 // Indicates we need to source this externally
+  };
 };
 
-export const syncToFirestore = async (products: ProductItem[]) => {
-  console.log(`Syncing ${products.length} products to Firestore 'curation' collection...`);
-  // Simulated Firestore write delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-  return true;
+export const fetchShopifyProducts = async (): Promise<ProductItem[]> => {
+  return GLOBAL_INVENTORY as ProductItem[];
 };
 
 export const fetchSystemAnalytics = async (): Promise<AnalyticsSummary> => {

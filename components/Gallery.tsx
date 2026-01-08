@@ -1,11 +1,14 @@
 
 import React from 'react';
 import { GeneratedImage } from '../types';
-import { Download, Calendar, ArrowUpRight, Maximize2, Trash2 } from 'lucide-react';
+import { Download, Calendar, ArrowUpRight, Maximize2, Trash2, Edit3, FolderOpen } from 'lucide-react';
 
-interface GalleryProps { images: GeneratedImage[]; }
+interface GalleryProps { 
+  images: GeneratedImage[]; 
+  onEdit: (url: string) => void;
+}
 
-export const Gallery: React.FC<GalleryProps> = ({ images }) => {
+export const Gallery: React.FC<GalleryProps> = ({ images, onEdit }) => {
   if (images.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-google-gray animate-fade">
@@ -31,21 +34,36 @@ export const Gallery: React.FC<GalleryProps> = ({ images }) => {
             <div className="aspect-[4/3] w-full overflow-hidden bg-google-bg relative">
               <img src={img.url} alt={img.prompt} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90" />
               <div className="absolute inset-0 bg-google-bg/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4">
+                 <button 
+                  onClick={() => onEdit(img.url)}
+                  className="p-3 bg-google-blue text-google-bg rounded-full hover:brightness-110 transition-all shadow-lg flex items-center justify-center"
+                  title="Refine Design"
+                 >
+                   <Edit3 size={20} />
+                 </button>
                  <a href={img.url} download={`prhomz-${img.id}.png`} className="p-3 bg-google-dark text-google-bg rounded-full hover:bg-white transition-all shadow-lg"><Download size={20} /></a>
-                 <button className="p-3 bg-google-dark text-google-bg rounded-full hover:bg-white transition-all shadow-lg"><Maximize2 size={20} /></button>
+              </div>
+              <div className="absolute top-4 left-4 bg-google-bg/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-google-border flex items-center space-x-2">
+                 <FolderOpen size={12} className="text-google-blue" />
+                 <span className="text-[10px] font-bold text-google-dark truncate max-w-[120px] uppercase tracking-wider">{img.projectName || 'Project Untitled'}</span>
               </div>
             </div>
             
             <div className="p-6 space-y-4">
               <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-google-gray">
-                <span className="px-2 py-0.5 bg-google-bg border border-google-border rounded-md text-google-blue">{img.mode}</span>
+                <span className="px-2 py-0.5 bg-google-bg border border-google-border rounded-md text-google-blue">{img.mode === 'edit' ? 'Refinement' : 'New Creation'}</span>
                 <div className="flex items-center space-x-1"><Calendar size={12} /><span>{new Date(img.timestamp).toLocaleDateString()}</span></div>
               </div>
               
               <div className="space-y-3">
                 <p className="text-google-dark text-sm line-clamp-2 leading-snug group-hover:text-google-blue transition-colors">{img.prompt}</p>
                 <div className="flex items-center justify-between pt-4 border-t border-google-border">
-                   <button className="text-[10px] text-google-gray font-bold uppercase tracking-widest flex items-center hover:text-google-blue transition-all">Details <ArrowUpRight className="ml-1 w-3 h-3" /></button>
+                   <button 
+                    onClick={() => onEdit(img.url)}
+                    className="text-[10px] text-google-gray font-bold uppercase tracking-widest flex items-center hover:text-google-blue transition-all"
+                   >
+                    Refine Design <ArrowUpRight className="ml-1 w-3 h-3" />
+                   </button>
                    <button className="text-google-gray hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
                 </div>
               </div>
