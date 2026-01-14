@@ -5,8 +5,9 @@ import { Remodeler } from './components/Remodeler';
 import { Assistant } from './components/Assistant';
 import { Gallery } from './components/Gallery';
 import { AdminDashboard } from './components/AdminDashboard';
+import { Auth } from './components/Auth';
 import { AppMode, GeneratedImage, UserAccount, ProductItem } from './types';
-import { ChevronDown, Search, HelpCircle, Settings, Grid, X, Loader2, ShoppingCart } from 'lucide-react';
+import { ChevronDown, Search, HelpCircle, Settings, Grid, X, Loader2, ShoppingCart, LogOut } from 'lucide-react';
 import { fetchUserDirectory } from './services/dataService';
 import { searchCatalog } from './services/geminiService';
 
@@ -16,6 +17,7 @@ function App() {
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [activeEditImage, setActiveEditImage] = useState<string | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,15 +25,38 @@ function App() {
   const [searchResults, setSearchResults] = useState<ProductItem[] | null>(null);
 
   useEffect(() => {
-    const initUser = async () => {
-      const users = await fetchUserDirectory();
-      setCurrentUser(users[0]);
-    };
-    initUser();
+    const storedUser = localStorage.getItem('prhomz_user');
+    if (storedUser) {
+      setCurrentUser(JSON.parse(storedUser));
+    }
   }, []);
+
+  const handleLogin = (user: UserAccount) => {
+    setCurrentUser(user);
+    setCurrentMode(AppMode.REMODEL);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('prhomz_user');
+    setCurrentUser(null);
+    setGeneratedImages([]);
+    setIsProfileOpen(false);
+  };
 
   const handleImageGenerated = (image: GeneratedImage) => {
     setGeneratedImages(prev => [...prev, image]);
+    
+    // Update Quota tracking for the current user
+    if (currentUser) {
+      const now = Date.now();
+      const updatedUser: UserAccount = {
+        ...currentUser,
+        totalRenders: (currentUser.totalRenders || 0) + 1,
+        renderTimestamps: [...(currentUser.renderTimestamps || []), now]
+      };
+      setCurrentUser(updatedUser);
+      localStorage.setItem('prhomz_user', JSON.stringify(updatedUser));
+    }
   };
 
   const handleEditFromGallery = (imageUrl: string) => {
@@ -66,6 +91,7 @@ function App() {
           onImageGenerated={handleImageGenerated} 
           initialImage={activeEditImage} 
           onClearInitial={() => setActiveEditImage(null)}
+          currentUser={currentUser}
         />;
       case AppMode.ASSISTANT: return <Assistant />;
       case AppMode.GALLERY: 
@@ -74,9 +100,13 @@ function App() {
           onEdit={handleEditFromGallery}
         />;
       case AppMode.ADMIN: return <AdminDashboard />;
-      default: return <Remodeler onImageGenerated={handleImageGenerated} />;
+      default: return <Remodeler onImageGenerated={handleImageGenerated} currentUser={currentUser} />;
     }
   };
+
+  if (!currentUser) {
+    return <Auth onLogin={handleLogin} />;
+  }
 
   return (
     <div className="min-h-screen bg-google-bg text-google-dark font-sans flex flex-col md:flex-row">
@@ -132,13 +162,28 @@ function App() {
                </button>
             </div>
             
-            <div className="pl-6 border-l border-google-border flex items-center space-x-3 group cursor-pointer">
+            <div className="relative pl-6 border-l border-google-border flex items-center space-x-3 group cursor-pointer" onClick={() => setIsProfileOpen(!isProfileOpen)}>
               <div className="flex flex-col text-right hidden sm:block">
                  <span className="text-[10px] font-bold text-google-dark uppercase tracking-wider">{currentUser?.name || 'Guest User'}</span>
               </div>
               <div className="w-10 h-10 rounded-2xl bg-google-blue text-google-bg flex items-center justify-center text-sm font-black shadow-lg shadow-google-blue/20 transition-transform group-hover:scale-105">
-                {currentUser?.name ? currentUser.name.charAt(0) : 'U'}
+                {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
               </div>
+
+              {isProfileOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-google-surface border border-google-border rounded-2xl shadow-2xl p-2 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="px-4 py-3 border-b border-google-border mb-1">
+                    <p className="text-[10px] font-bold text-google-gray uppercase tracking-widest">{currentUser.email}</p>
+                  </div>
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold text-red-400 hover:bg-red-400/10 rounded-xl transition-colors"
+                  >
+                    <LogOut size={16} />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>

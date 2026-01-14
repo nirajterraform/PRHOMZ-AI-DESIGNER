@@ -93,7 +93,7 @@ export const generateProductList = async (base64Image: string): Promise<ProductI
 
     const items = JSON.parse(response.text || "[]");
     
-    // ENHANCEMENT: Match AI items to Real Inventory
+    // Match AI items to Real Inventory
     const productsWithMatches = await Promise.all(items.map(async (item: any, index: number) => {
       const inventoryMatch = await findMatchingInventory(item.name);
       
@@ -101,10 +101,11 @@ export const generateProductList = async (base64Image: string): Promise<ProductI
         ...item,
         id: `prod-${Date.now()}-${index}`,
         shopifyId: inventoryMatch.shopifyId,
+        productUrl: inventoryMatch.productUrl,
         stockLevel: inventoryMatch.stockLevel,
-        // Override with real data if match found
+        // Prioritize real inventory data including the image URL
         price: inventoryMatch.price || item.price,
-        imageUrl: `https://loremflickr.com/300/300/furniture,interior,${encodeURIComponent(item.name.replace(/\s+/g, ','))}`
+        imageUrl: inventoryMatch.imageUrl || `https://loremflickr.com/400/400/furniture,interior,${encodeURIComponent(item.name.replace(/\s+/g, ','))}`
       };
     }));
 
@@ -135,11 +136,20 @@ export const searchCatalog = async (query: string): Promise<ProductItem[]> => {
       }
     });
     const items = JSON.parse(response.text || "[]");
-    return items.map((item: any, index: number) => ({
-      ...item,
-      id: `search-${Date.now()}-${index}`,
-      imageUrl: `https://loremflickr.com/300/300/furniture,interior,${encodeURIComponent(item.name.replace(/\s+/g, ','))}`
+    
+    // Also try to match search results to real inventory images
+    const searchResultsWithMatches = await Promise.all(items.map(async (item: any, index: number) => {
+      const inventoryMatch = await findMatchingInventory(item.name);
+      return {
+        ...item,
+        id: `search-${Date.now()}-${index}`,
+        shopifyId: inventoryMatch.shopifyId,
+        productUrl: inventoryMatch.productUrl,
+        imageUrl: inventoryMatch.imageUrl || `https://loremflickr.com/400/400/furniture,interior,${encodeURIComponent(item.name.replace(/\s+/g, ','))}`
+      };
     }));
+
+    return searchResultsWithMatches;
   } catch (error) { console.error(error); return []; }
 };
 
@@ -152,7 +162,7 @@ export const swapProduct = async (base64Image: string, currentProduct: ProductIt
       contents: {
         parts: [
           { inlineData: { data: base64Data, mimeType: mimeType } },
-          { text: `Alternative for "${currentProduct.name}".` }
+          { text: `Suggest an alternative high-end furniture piece for "${currentProduct.name}" that would look good in this scene.` }
         ]
       },
       config: {
@@ -170,6 +180,14 @@ export const swapProduct = async (base64Image: string, currentProduct: ProductIt
       }
     });
     const item = JSON.parse(response.text || "{}");
-    return { ...item, id: `swap-${Date.now()}`, imageUrl: `https://loremflickr.com/300/300/furniture,interior,${encodeURIComponent(item.name.replace(/\s+/g, ','))}` };
+    const inventoryMatch = await findMatchingInventory(item.name);
+
+    return { 
+      ...item, 
+      id: `swap-${Date.now()}`, 
+      shopifyId: inventoryMatch.shopifyId,
+      productUrl: inventoryMatch.productUrl,
+      imageUrl: inventoryMatch.imageUrl || `https://loremflickr.com/400/400/furniture,interior,${encodeURIComponent(item.name.replace(/\s+/g, ','))}` 
+    };
   } catch (error) { console.error(error); throw error; }
 };

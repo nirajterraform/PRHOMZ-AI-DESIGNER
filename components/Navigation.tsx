@@ -61,8 +61,8 @@ export const Navigation: React.FC<NavigationProps> = ({ currentMode, onModeChang
                       : 'text-google-gray hover:bg-google-surface/50 hover:text-google-dark'}
                   `}
                 >
-                  <item.icon size={18} className={`${isActive ? 'text-google-blue' : 'text-google-gray'} transition-colors`} />
-                  <span className="tracking-wide">{item.label}</span>
+                  <item.icon size={20} className={`${isActive ? 'text-google-blue' : 'text-google-gray'} transition-colors`} />
+                  <span className="tracking-wide text-sm"> {item.label}</span>
                 </button>
               );
             })}
@@ -71,11 +71,11 @@ export const Navigation: React.FC<NavigationProps> = ({ currentMode, onModeChang
           <div className="p-8 border-t border-google-border bg-google-surface/10">
              <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 rounded-2xl bg-google-surface border border-google-border flex items-center justify-center shadow-inner">
-                   <ShieldCheck size={20} className="text-google-blue" />
+                   <ShieldCheck size={22} className="text-google-blue" />
                 </div>
                 <div className="overflow-hidden">
-                   <p className="text-xs font-bold text-google-dark truncate">Signature Member</p>
-                   <p className="text-[9px] text-google-gray truncate font-bold uppercase tracking-widest mt-0.5">PRO Verified</p>
+                   <p className="text-sm font-bold text-google-dark truncate">Signature Member</p>
+                   <p className="text-xs text-google-gray truncate font-bold uppercase tracking-widest mt-0.5">PRO Verified</p>
                 </div>
              </div>
           </div>

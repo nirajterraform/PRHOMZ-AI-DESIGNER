@@ -26,6 +26,7 @@ export interface ChatMessage {
 export interface ProductItem {
   id: string;
   shopifyId?: string;
+  productUrl?: string; // Link to the product page on the store
   name: string;
   description: string;
   price: number;
@@ -55,6 +56,7 @@ export interface UserAccount {
   role: 'Client' | 'Designer' | 'Admin';
   lastActive: number;
   totalRenders: number;
+  renderTimestamps?: number[]; // Added for quota tracking
 }
 
 export type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
