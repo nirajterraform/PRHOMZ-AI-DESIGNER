@@ -58,7 +58,7 @@ export const chatWithDesigner = async (history: { role: 'user' | 'model'; text: 
 };
 
 /**
- * Analyzes an image, finds objects, and matches them to real inventory.
+ * Performs an exhaustive spatial scan of the image to identify all products.
  */
 export const generateProductList = async (base64Image: string): Promise<ProductItem[]> => {
   try {
@@ -70,7 +70,7 @@ export const generateProductList = async (base64Image: string): Promise<ProductI
       contents: {
         parts: [
           { inlineData: { data: base64Data, mimeType: mimeType } },
-          { text: "Identify distinct furniture items. For each, provide Name, Description, Est. Price, and Colors. Be descriptive for visual matching." }
+          { text: "PERFORM EXHAUSTIVE SPATIAL SCAN: Identify EVERY visible product in this design. Detect all furniture (sofas, tables, chairs), lighting (lamps, pendants), textiles (rugs, cushions), and decor (vases, art). For each item found, provide Name, precise Description, Est. Luxury Price, and Colors." }
         ]
       },
       config: {
@@ -103,9 +103,8 @@ export const generateProductList = async (base64Image: string): Promise<ProductI
         shopifyId: inventoryMatch.shopifyId,
         productUrl: inventoryMatch.productUrl,
         stockLevel: inventoryMatch.stockLevel,
-        // Prioritize real inventory data including the image URL
         price: inventoryMatch.price || item.price,
-        imageUrl: inventoryMatch.imageUrl || `https://loremflickr.com/400/400/furniture,interior,${encodeURIComponent(item.name.replace(/\s+/g, ','))}`
+        imageUrl: inventoryMatch.imageUrl || "" // Handled by UI, we don't show generic placeholders anymore
       };
     }));
 
@@ -137,7 +136,6 @@ export const searchCatalog = async (query: string): Promise<ProductItem[]> => {
     });
     const items = JSON.parse(response.text || "[]");
     
-    // Also try to match search results to real inventory images
     const searchResultsWithMatches = await Promise.all(items.map(async (item: any, index: number) => {
       const inventoryMatch = await findMatchingInventory(item.name);
       return {
@@ -145,7 +143,7 @@ export const searchCatalog = async (query: string): Promise<ProductItem[]> => {
         id: `search-${Date.now()}-${index}`,
         shopifyId: inventoryMatch.shopifyId,
         productUrl: inventoryMatch.productUrl,
-        imageUrl: inventoryMatch.imageUrl || `https://loremflickr.com/400/400/furniture,interior,${encodeURIComponent(item.name.replace(/\s+/g, ','))}`
+        imageUrl: inventoryMatch.imageUrl || ""
       };
     }));
 
@@ -187,7 +185,7 @@ export const swapProduct = async (base64Image: string, currentProduct: ProductIt
       id: `swap-${Date.now()}`, 
       shopifyId: inventoryMatch.shopifyId,
       productUrl: inventoryMatch.productUrl,
-      imageUrl: inventoryMatch.imageUrl || `https://loremflickr.com/400/400/furniture,interior,${encodeURIComponent(item.name.replace(/\s+/g, ','))}` 
+      imageUrl: inventoryMatch.imageUrl || "" 
     };
   } catch (error) { console.error(error); throw error; }
 };
