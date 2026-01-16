@@ -1,8 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Download, ShoppingBag, Plus, ImageIcon, CheckCircle2, ChevronRight, Wand2, ShieldCheck, RefreshCcw, Layout, AlertTriangle, Crown } from 'lucide-react';
+import { Upload, Download, ShoppingBag, Plus, ImageIcon, CheckCircle2, ChevronRight, Wand2, ShieldCheck, RefreshCcw, Layout, AlertTriangle, Crown, Star, Clock, Zap } from 'lucide-react';
 import { remodelImage } from '../services/geminiService';
-import { GeneratedImage, DESIGN_PRESETS, UserAccount } from '../types';
+import { GeneratedImage, DESIGN_PRESETS, UserAccount, ProductItem } from '../types';
 import { Button } from './Button';
 import { ShopLookModal } from './ShopLookModal';
 
@@ -11,9 +11,10 @@ interface RemodelerProps {
   initialImage?: string | null;
   onClearInitial?: () => void;
   currentUser: UserAccount | null;
+  onSaveProducts?: (imageUrl: string, products: ProductItem[]) => void;
 }
 
-export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialImage, onClearInitial, currentUser }) => {
+export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialImage, onClearInitial, currentUser, onSaveProducts }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialImage || null);
   const [instruction, setInstruction] = useState('');
@@ -23,16 +24,35 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
   const [isProcessing, setIsProcessing] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [isShopOpen, setIsShopOpen] = useState(false);
+  const [generationTime, setGenerationTime] = useState<number | null>(null);
+  const [activeTimer, setActiveTimer] = useState<number>(0);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const timerIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (initialImage) {
       setPreviewUrl(initialImage);
       setResultImage(null);
+      setGenerationTime(null);
     }
   }, [initialImage]);
 
-  // Quota calculation logic
+  const startTimer = () => {
+    setActiveTimer(0);
+    const start = Date.now();
+    timerIntervalRef.current = window.setInterval(() => {
+      setActiveTimer((Date.now() - start) / 1000);
+    }, 100);
+  };
+
+  const stopTimer = () => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+  };
+
   const getRecentRendersCount = () => {
     if (!currentUser || currentUser.role !== 'Client') return 0;
     const now = Date.now();
@@ -52,6 +72,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
       reader.onload = (ev) => {
         setPreviewUrl(ev.target?.result as string);
         setResultImage(null);
+        setGenerationTime(null);
         if (onClearInitial) onClearInitial();
       };
       reader.readAsDataURL(file);
@@ -62,11 +83,18 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
     if (isQuotaReached) return;
     if (!previewUrl || (!instruction.trim() && !selectedStyle)) return;
     setIsProcessing(true);
+    setGenerationTime(null);
+    startTimer();
+    
     try {
       const styleContext = selectedStyle ? DESIGN_PRESETS.find(p => p.id === selectedStyle)?.prompt : '';
-      const fullInstruction = `${instruction}. ${styleContext}. Budget: $${budget}`.trim();
+      const fullInstruction = `${instruction}. ${styleContext}. Budget Target: $${budget}`.trim();
       const outputBase64 = await remodelImage(previewUrl, fullInstruction);
+      
+      stopTimer();
+      setGenerationTime(activeTimer);
       setResultImage(outputBase64);
+      
       onImageGenerated({
         id: Date.now().toString(),
         url: outputBase64,
@@ -76,6 +104,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
         projectName: projectName || 'Untitled Iteration'
       });
     } catch (error) {
+      stopTimer();
       alert("Something went wrong with the remodel. Please ensure your prompt focuses on home design.");
     } finally {
       setIsProcessing(false);
@@ -87,6 +116,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
     setResultImage(null);
     setSelectedFile(null);
     setProjectName('');
+    setGenerationTime(null);
     if (onClearInitial) onClearInitial();
   };
 
@@ -141,7 +171,6 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Input Panel */}
         <div className="lg:col-span-4 space-y-8">
           <section className="bg-google-surface border border-google-border rounded-2xl p-6 space-y-4 shadow-sm">
             <h3 className="text-sm font-bold text-google-gray uppercase tracking-wider flex items-center">
@@ -188,7 +217,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
           </section>
 
           <section className="bg-google-surface border border-google-border rounded-2xl p-6 space-y-6 shadow-sm">
-            <h3 className="text-sm font-bold text-google-gray uppercase tracking-wider">Step 2: Redesign Instruction</h3>
+            <h3 className="text-sm font-bold text-google-gray uppercase tracking-wider">Step 2: Design Direction</h3>
             <div className="grid grid-cols-2 gap-3">
               {DESIGN_PRESETS.map((style) => (
                 <button
@@ -196,12 +225,17 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
                   disabled={isQuotaReached}
                   onClick={() => setSelectedStyle(prev => prev === style.id ? '' : style.id)}
                   className={`
-                    px-3 py-2.5 text-xs font-semibold border rounded-lg transition-all text-left
-                    ${selectedStyle === style.id ? 'bg-google-blue text-google-bg border-google-blue font-bold' : 'bg-google-bg border-google-border text-google-gray hover:text-google-dark hover:bg-google-surface'}
+                    px-3 py-3 text-xs font-semibold border rounded-lg transition-all text-left relative overflow-hidden
+                    ${selectedStyle === style.id ? 'bg-google-blue text-google-bg border-google-blue font-bold shadow-lg' : 'bg-google-bg border-google-border text-google-gray hover:text-google-dark hover:bg-google-surface'}
                     ${isQuotaReached ? 'opacity-50 cursor-not-allowed' : ''}
                   `}
                 >
-                  {style.label}
+                  <span className="relative z-10">{style.label}</span>
+                  {style.isTrending && (
+                    <div className="absolute top-0 right-0 p-1">
+                      <Star size={10} className={selectedStyle === style.id ? 'text-google-bg' : 'text-google-blue'} fill="currentColor" />
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -209,8 +243,8 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
               value={instruction}
               disabled={isQuotaReached}
               onChange={(e) => setInstruction(e.target.value)}
-              placeholder="e.g. Swap the sofa for a modern sectional, add mid-century lamps..."
-              className={`w-full bg-google-bg border border-google-border rounded-xl p-4 text-sm focus:ring-2 focus:ring-google-blue focus:outline-none min-h-[140px] resize-none text-google-dark placeholder-google-gray leading-relaxed ${isQuotaReached ? 'opacity-50 cursor-not-allowed' : ''}`}
+              placeholder="Refine further: e.g. Swap sofa for velvet sectional, add gold accent lamps..."
+              className={`w-full bg-google-bg border border-google-border rounded-xl p-4 text-sm focus:ring-2 focus:ring-google-blue focus:outline-none min-h-[120px] resize-none text-google-dark placeholder-google-gray leading-relaxed ${isQuotaReached ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
           </section>
 
@@ -238,12 +272,24 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
           </Button>
         </div>
 
-        {/* Result Area */}
         <div className="lg:col-span-8">
           <div className="bg-google-surface border border-google-border rounded-[2.5rem] overflow-hidden flex items-center justify-center min-h-[600px] relative group shadow-lg">
             {resultImage ? (
               <div className="w-full h-full relative">
                 <img src={resultImage} alt="Remodeled" className="w-full h-full object-cover" />
+                
+                {/* Benchmark Indicator */}
+                <div className="absolute top-6 left-6 flex flex-col space-y-2">
+                  <div className="bg-google-bg/85 backdrop-blur-xl px-4 py-2 rounded-2xl border border-google-border flex items-center space-x-2 text-google-blue shadow-2xl animate-in slide-in-from-left-4 duration-500">
+                    <Zap size={14} className="fill-google-blue" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] font-mono">Engine Benchmark: {generationTime?.toFixed(1)}s</span>
+                  </div>
+                  <div className="bg-google-bg/60 backdrop-blur-md px-3 py-1 rounded-xl border border-white/5 flex items-center space-x-2 text-google-gray">
+                    <Clock size={10} />
+                    <span className="text-[9px] font-bold uppercase tracking-widest">High Intensity Compute</span>
+                  </div>
+                </div>
+
                 <div className="absolute inset-x-0 bottom-0 p-10 bg-gradient-to-t from-google-bg/95 to-transparent flex items-center justify-center space-x-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <Button onClick={() => setIsShopOpen(true)} className="rounded-full bg-google-dark text-google-bg hover:bg-white border-none px-10 py-4 text-sm font-bold shadow-2xl transition-all hover:scale-105 active:scale-95">
                     <ShoppingBag className="w-5 h-5 mr-2" />
@@ -265,9 +311,18 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
             ) : (
               <div className="text-center p-20 space-y-8">
                 {isProcessing ? (
-                  <div className="flex flex-col items-center space-y-8">
-                    <div className="w-16 h-16 border-4 border-google-border border-t-google-blue rounded-full animate-spin"></div>
-                    <p className="text-sm font-bold text-google-gray animate-pulse font-mono tracking-widest">REDRAWING ROOM ARCHITECTURE...</p>
+                  <div className="flex flex-col items-center space-y-10">
+                    <div className="relative">
+                      <div className="w-20 h-20 border-4 border-google-border border-t-google-blue rounded-full animate-spin"></div>
+                      <Zap className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-google-blue animate-pulse" size={24} />
+                    </div>
+                    <div className="flex flex-col items-center space-y-3">
+                       <p className="text-sm font-bold text-google-gray animate-pulse font-mono tracking-[0.3em] uppercase">Redrawing Spatial Architecture</p>
+                       <div className="flex items-center space-x-2 px-6 py-2 bg-google-lightBlue rounded-2xl border border-google-blue/20">
+                          <Clock size={14} className="text-google-blue" />
+                          <span className="text-google-blue font-mono font-black text-2xl tabular-nums">{activeTimer.toFixed(1)}s</span>
+                       </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="opacity-40 flex flex-col items-center space-y-6">
@@ -285,7 +340,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
         </div>
       </div>
 
-      {resultImage && <ShopLookModal image={resultImage} isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} budget={budget} />}
+      {resultImage && <ShopLookModal image={resultImage} isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} budget={budget} onSaveProducts={(products) => onSaveProducts?.(resultImage, products)} />}
     </div>
   );
 };

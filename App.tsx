@@ -8,7 +8,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { Auth } from './components/Auth';
 import { AppMode, GeneratedImage, UserAccount, ProductItem } from './types';
 import { ChevronDown, Search, HelpCircle, Settings, Grid, X, Loader2, ShoppingCart, LogOut } from 'lucide-react';
-import { fetchUserDirectory } from './services/dataService';
+import { fetchShopifyProducts } from './services/dataService';
 import { searchCatalog } from './services/geminiService';
 
 function App() {
@@ -29,7 +29,17 @@ function App() {
     if (storedUser) {
       setCurrentUser(JSON.parse(storedUser));
     }
+    const storedImages = localStorage.getItem('prhomz_gallery');
+    if (storedImages) {
+      setGeneratedImages(JSON.parse(storedImages));
+    }
   }, []);
+
+  useEffect(() => {
+    if (generatedImages.length > 0) {
+      localStorage.setItem('prhomz_gallery', JSON.stringify(generatedImages));
+    }
+  }, [generatedImages]);
 
   const handleLogin = (user: UserAccount) => {
     setCurrentUser(user);
@@ -46,7 +56,6 @@ function App() {
   const handleImageGenerated = (image: GeneratedImage) => {
     setGeneratedImages(prev => [...prev, image]);
     
-    // Update Quota tracking for the current user
     if (currentUser) {
       const now = Date.now();
       const updatedUser: UserAccount = {
@@ -57,6 +66,12 @@ function App() {
       setCurrentUser(updatedUser);
       localStorage.setItem('prhomz_user', JSON.stringify(updatedUser));
     }
+  };
+
+  const handleSaveProductsToImage = (imageUrl: string, products: ProductItem[]) => {
+    setGeneratedImages(prev => prev.map(img => 
+      img.url === imageUrl ? { ...img, savedProducts: products } : img
+    ));
   };
 
   const handleEditFromGallery = (imageUrl: string) => {
@@ -92,6 +107,7 @@ function App() {
           initialImage={activeEditImage} 
           onClearInitial={() => setActiveEditImage(null)}
           currentUser={currentUser}
+          onSaveProducts={handleSaveProductsToImage}
         />;
       case AppMode.ASSISTANT: return <Assistant />;
       case AppMode.GALLERY: 
@@ -100,7 +116,7 @@ function App() {
           onEdit={handleEditFromGallery}
         />;
       case AppMode.ADMIN: return <AdminDashboard />;
-      default: return <Remodeler onImageGenerated={handleImageGenerated} currentUser={currentUser} />;
+      default: return <Remodeler onImageGenerated={handleImageGenerated} currentUser={currentUser} onSaveProducts={handleSaveProductsToImage} />;
     }
   };
 
@@ -114,7 +130,6 @@ function App() {
         currentMode={currentMode} 
         onModeChange={(mode) => {
           setCurrentMode(mode);
-          // If switching to remodel via nav (not via edit button), clear active edit
           if (mode === AppMode.REMODEL) setActiveEditImage(null);
         }}
         isOpen={isNavOpen}
@@ -188,7 +203,6 @@ function App() {
           </div>
         </header>
 
-        {/* Search Results Overlay */}
         {searchResults && (
           <div className="fixed inset-0 top-20 z-40 bg-google-bg/95 backdrop-blur-md overflow-y-auto animate-fade">
             <div className="max-w-6xl mx-auto p-8 md:p-12">
@@ -229,9 +243,14 @@ function App() {
                         <p className="text-xs text-google-gray leading-relaxed line-clamp-3">{item.description}</p>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <button className="flex-1 bg-google-blue text-google-bg py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all flex items-center justify-center">
-                          <ShoppingCart size={14} className="mr-2" /> Add to project
-                        </button>
+                        <a 
+                          href={item.productUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="flex-1 bg-google-blue text-google-bg py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all flex items-center justify-center"
+                        >
+                          <ShoppingCart size={14} className="mr-2" /> View on Store
+                        </a>
                       </div>
                     </div>
                   </div>

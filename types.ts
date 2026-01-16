@@ -14,6 +14,7 @@ export interface GeneratedImage {
   timestamp: number;
   projectName?: string;
   category?: string;
+  savedProducts?: ProductItem[]; // Persisted sourced items
 }
 
 export interface ChatMessage {
@@ -34,6 +35,7 @@ export interface ProductItem {
   imageUrl?: string;
   stockLevel?: number;
   lastSynced?: number;
+  isSynced?: boolean; // Tracking source verification
 }
 
 export interface AnalyticsSummary {
@@ -65,13 +67,14 @@ export interface DesignPreset {
   id: string;
   label: string;
   prompt: string;
+  isTrending?: boolean;
 }
 
 export const DESIGN_PRESETS: DesignPreset[] = [
-  { id: 'minimalist', label: 'Zen Minimalist', prompt: 'ultra-minimalist, clean lines, serene atmosphere, neutral tones' },
-  { id: 'brutalist', label: 'Brutalist', prompt: 'raw concrete textures, bold geometric forms, dramatic lighting, industrial core' },
-  { id: 'nordic', label: 'Nordic Warmth', prompt: 'scandinavian style, light wood, cozy textiles, functional elegance' },
-  { id: 'industrial', label: 'Industrial Loft', prompt: 'exposed brick, steel beams, high ceilings, leather accents' },
-  { id: 'contemporary', label: 'Contemporary', prompt: 'modern luxury, high-end finishes, curated art, sleek surfaces' },
-  { id: 'biophilic', label: 'Biophilic', prompt: 'nature-integrated, indoor plants, organic materials, sunlight-focused' },
+  { id: 'modern', label: 'Modern Chic', prompt: 'sleek contemporary luxury, clean lines, polished finishes, sophisticated palette', isTrending: true },
+  { id: 'boho', label: 'Bohemian', prompt: 'eclectic textures, warm organic tones, layered fabrics, relaxed artistic vibe' },
+  { id: 'japandi', label: 'Japandi', prompt: 'japanese minimalism meets scandinavian functionality, warm wood, serene space', isTrending: true },
+  { id: 'coastal', label: 'Coastal Modern', prompt: 'light airy feel, driftwood tones, oceanic blues, linen textures', isTrending: true },
+  { id: 'industrial', label: 'Industrial Loft', prompt: 'exposed architectural elements, metal accents, raw wood, urban aesthetic' },
+  { id: 'transitional', label: 'Transitional Luxe', prompt: 'perfect balance of traditional comfort and modern sleekness, timeless elegance', isTrending: true },
 ];
