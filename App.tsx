@@ -25,25 +25,41 @@ function App() {
   const [searchResults, setSearchResults] = useState<ProductItem[] | null>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('prhomz_user');
-    if (storedUser) {
-      setCurrentUser(JSON.parse(storedUser));
-    }
-    const storedImages = localStorage.getItem('prhomz_gallery');
-    if (storedImages) {
-      setGeneratedImages(JSON.parse(storedImages));
+    try {
+      const storedUser = localStorage.getItem('prhomz_user');
+      if (storedUser) {
+        setCurrentUser(JSON.parse(storedUser));
+      }
+      const storedImages = localStorage.getItem('prhomz_gallery');
+      if (storedImages) {
+        setGeneratedImages(JSON.parse(storedImages));
+      }
+    } catch (e) {
+      console.warn("Failed to load state from localStorage:", e);
     }
   }, []);
 
   useEffect(() => {
     if (generatedImages.length > 0) {
-      localStorage.setItem('prhomz_gallery', JSON.stringify(generatedImages));
+      try {
+        // Only attempt to store the last 5 images to stay within 5MB localStorage limits
+        // for this frontend-only prototype. Production apps use S3/GCS.
+        const itemsToStore = generatedImages.slice(-5);
+        localStorage.setItem('prhomz_gallery', JSON.stringify(itemsToStore));
+      } catch (e) {
+        console.error("Gallery exceeds storage quota. Persistence disabled for this session.", e);
+      }
     }
   }, [generatedImages]);
 
   const handleLogin = (user: UserAccount) => {
     setCurrentUser(user);
     setCurrentMode(AppMode.REMODEL);
+    try {
+      localStorage.setItem('prhomz_user', JSON.stringify(user));
+    } catch (e) {
+      console.error("Failed to save user session:", e);
+    }
   };
 
   const handleLogout = () => {
@@ -64,7 +80,11 @@ function App() {
         renderTimestamps: [...(currentUser.renderTimestamps || []), now]
       };
       setCurrentUser(updatedUser);
-      localStorage.setItem('prhomz_user', JSON.stringify(updatedUser));
+      try {
+        localStorage.setItem('prhomz_user', JSON.stringify(updatedUser));
+      } catch (e) {
+        console.warn("User stats quota exceeded in storage.");
+      }
     }
   };
 

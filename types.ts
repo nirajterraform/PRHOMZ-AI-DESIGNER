@@ -6,6 +6,8 @@ export enum AppMode {
   ADMIN = 'ADMIN'
 }
 
+export type ProductSource = 'PRHOMZ' | 'Amazon' | 'Wayfair' | 'IKEA';
+
 export interface GeneratedImage {
   id: string;
   url: string;

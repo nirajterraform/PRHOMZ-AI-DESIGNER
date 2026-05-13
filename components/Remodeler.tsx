@@ -82,8 +82,11 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
   const handleRemodel = async () => {
     if (isQuotaReached) return;
     if (!previewUrl || (!instruction.trim() && !selectedStyle)) return;
+    
     setIsProcessing(true);
     setGenerationTime(null);
+    setResultImage(null);
+    const apiStartTime = Date.now();
     startTimer();
     
     try {
@@ -92,7 +95,8 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
       const outputBase64 = await remodelImage(previewUrl, fullInstruction);
       
       stopTimer();
-      setGenerationTime(activeTimer);
+      const duration = (Date.now() - apiStartTime) / 1000;
+      setGenerationTime(duration);
       setResultImage(outputBase64);
       
       onImageGenerated({
@@ -265,21 +269,21 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
             onClick={handleRemodel} 
             isLoading={isProcessing} 
             className={`w-full rounded-xl py-4.5 text-base font-bold ${isQuotaReached ? 'bg-google-gray cursor-not-allowed' : ''}`}
-            disabled={!previewUrl || (!instruction.trim() && !selectedStyle) || isQuotaReached}
+            disabled={!previewUrl || (!instruction.trim() && !selectedStyle) || isProcessing || isQuotaReached}
           >
             <Wand2 className="w-5 h-5 mr-2" />
             {isQuotaReached ? 'Quota Reached' : initialImage ? 'Apply Refinements' : 'Apply Transformations'}
           </Button>
         </div>
 
-        <div className="lg:col-span-8">
-          <div className="bg-google-surface border border-google-border rounded-[2.5rem] overflow-hidden flex items-center justify-center min-h-[600px] relative group shadow-lg">
+        <div className="lg:col-span-8 h-full min-h-[600px] flex flex-col">
+          <div className="flex-1 bg-google-surface border border-google-border rounded-[2.5rem] overflow-hidden flex items-center justify-center relative group shadow-lg">
             {resultImage ? (
-              <div className="w-full h-full relative">
+              <div className="absolute inset-0 w-full h-full">
                 <img src={resultImage} alt="Remodeled" className="w-full h-full object-cover" />
                 
                 {/* Benchmark Indicator */}
-                <div className="absolute top-6 left-6 flex flex-col space-y-2">
+                <div className="absolute top-6 left-6 flex flex-col space-y-2 z-10">
                   <div className="bg-google-bg/85 backdrop-blur-xl px-4 py-2 rounded-2xl border border-google-border flex items-center space-x-2 text-google-blue shadow-2xl animate-in slide-in-from-left-4 duration-500">
                     <Zap size={14} className="fill-google-blue" />
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] font-mono">Engine Benchmark: {generationTime?.toFixed(1)}s</span>
@@ -290,7 +294,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
                   </div>
                 </div>
 
-                <div className="absolute inset-x-0 bottom-0 p-10 bg-gradient-to-t from-google-bg/95 to-transparent flex items-center justify-center space-x-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="absolute inset-0 bg-gradient-to-t from-google-bg/95 to-transparent flex items-center justify-center space-x-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
                   <Button onClick={() => setIsShopOpen(true)} className="rounded-full bg-google-dark text-google-bg hover:bg-white border-none px-10 py-4 text-sm font-bold shadow-2xl transition-all hover:scale-105 active:scale-95">
                     <ShoppingBag className="w-5 h-5 mr-2" />
                     Shop Furnishings

@@ -1,5 +1,5 @@
 
-import { ProductItem, AnalyticsSummary, UserAccount } from "../types";
+import { ProductItem, AnalyticsSummary, UserAccount, ProductSource } from "../types";
 
 const SHOPIFY_STORE_DOMAIN = 'ace651-3.myshopify.com';
 const ACCESS_TOKEN = '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';
@@ -74,8 +74,6 @@ const FALLBACK_INVENTORY: ProductItem[] = [
  */
 const fetchSpecificShopifyProduct = async (title: string): Promise<ProductItem | null> => {
   try {
-    // We restrict the search to just this specific title and only pull basic product fields.
-    // This avoids fetching broad inventory data as requested.
     const url = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-01/products.json?title=${encodeURIComponent(title)}&fields=id,title,handle,body_html,variants,images&limit=1`;
     
     const response = await fetch(url, {
@@ -105,67 +103,63 @@ const fetchSpecificShopifyProduct = async (title: string): Promise<ProductItem |
       isSynced: true
     };
   } catch (error) {
-    // Catch 'Failed to fetch' (CORS) and return null to trigger fallback
     return null;
   }
 };
 
 /**
- * Matches AI-detected items against live Shopify inventory.
+ * Matches AI-detected items against live Shopify inventory or selected external source.
  * Performs a targeted lookup for the specific product detected by the AI.
  */
-export const findMatchingInventory = async (aiDetectedName: string): Promise<Partial<ProductItem>> => {
-  // 1. Attempt Targeted Live Lookup for the specific AI-detected product
-  const liveMatch = await fetchSpecificShopifyProduct(aiDetectedName);
-  
-  if (liveMatch) {
-    return liveMatch;
-  }
+export const findMatchingInventory = async (aiDetectedName: string, source: ProductSource = 'PRHOMZ'): Promise<Partial<ProductItem>> => {
+  // If sourcing from PRHOMZ, try live Shopify first
+  if (source === 'PRHOMZ') {
+    const liveMatch = await fetchSpecificShopifyProduct(aiDetectedName);
+    if (liveMatch) return liveMatch;
 
-  // 2. Local High-Fidelity Lookup (Fallback for CORS or No Match)
-  const searchWords = aiDetectedName.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-  let bestLocalMatch: ProductItem | null = null;
-  let highestScore = 0;
+    // Fallback to local inventory for PRHOMZ
+    const searchWords = aiDetectedName.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    let bestLocalMatch: ProductItem | null = null;
+    let highestScore = 0;
 
-  for (const item of FALLBACK_INVENTORY) {
-    const itemWords = item.name.toLowerCase().split(/\s+/);
-    let score = 0;
-    
-    if (item.name.toLowerCase() === aiDetectedName.toLowerCase()) {
-      score = 100;
-    } else {
-      for (const sw of searchWords) {
-        if (itemWords.includes(sw)) score += 10;
-        else if (item.name.toLowerCase().includes(sw)) score += 5;
+    for (const item of FALLBACK_INVENTORY) {
+      const itemWords = item.name.toLowerCase().split(/\s+/);
+      let score = 0;
+      if (item.name.toLowerCase() === aiDetectedName.toLowerCase()) score = 100;
+      else {
+        for (const sw of searchWords) {
+          if (itemWords.includes(sw)) score += 10;
+          else if (item.name.toLowerCase().includes(sw)) score += 5;
+        }
       }
+      if (score > highestScore) { highestScore = score; bestLocalMatch = item; }
     }
 
-    if (score > highestScore) {
-      highestScore = score;
-      bestLocalMatch = item;
-    }
-  }
-
-  if (bestLocalMatch && highestScore >= 10) {
+    if (bestLocalMatch && highestScore >= 10) return { ...bestLocalMatch, isSynced: true };
+    
     return {
-      ...bestLocalMatch,
-      isSynced: true // Flag as verified from the local 'Atelier' cache
+      name: aiDetectedName,
+      shopifyId: "external_referral",
+      productUrl: `${SHOPIFY_STORE_URL}/search?q=${encodeURIComponent(aiDetectedName)}`,
+      isSynced: false
     };
   }
 
-  // 3. Final Search Referral (Safe link to search page)
+  // Handle External Sources (Amazon, Wayfair, IKEA)
+  const baseUrlMap: Record<string, string> = {
+    'Amazon': 'https://www.amazon.com/s?k=',
+    'Wayfair': 'https://www.wayfair.com/keyword.php?keyword=',
+    'IKEA': 'https://www.ikea.com/us/en/search/?q='
+  };
+
   return {
     name: aiDetectedName,
-    shopifyId: "external_referral",
-    productUrl: `${SHOPIFY_STORE_URL}/search?q=${encodeURIComponent(aiDetectedName)}`,
+    shopifyId: `external_${source.toLowerCase()}`,
+    productUrl: `${baseUrlMap[source] || 'https://google.com/search?q='}${encodeURIComponent(aiDetectedName)}`,
     isSynced: false
   };
 };
 
-/**
- * Standard fetch used for dashboarding or full catalog views.
- * Handles errors gracefully to avoid the 'Failed to fetch' alert.
- */
 export const fetchShopifyProducts = async (): Promise<ProductItem[]> => {
   try {
     const response = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-01/products.json?limit=50&fields=id,title,handle,body_html,variants,images`, {
@@ -191,7 +185,6 @@ export const fetchShopifyProducts = async (): Promise<ProductItem[]> => {
       isSynced: true
     }));
   } catch (error) {
-    console.warn("Shopify fetch failed. Using fallback catalog.");
     return FALLBACK_INVENTORY;
   }
 };

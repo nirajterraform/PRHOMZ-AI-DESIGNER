@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
-import { AspectRatio, ProductItem } from "../types";
+import { AspectRatio, ProductItem, ProductSource } from "../types";
 import { findMatchingInventory } from "./dataService";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -48,7 +48,7 @@ export const remodelImage = async (base64Image: string, instruction: string): Pr
 export const chatWithDesigner = async (history: { role: 'user' | 'model'; text: string }[], newMessage: string): Promise<string> => {
   try {
     const chat = ai.chats.create({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3.1-pro-preview',
       config: { systemInstruction: "You are PRHOMZ AI DESIGNER. You provide elite interior advice and help users curate luxury spaces." },
       history: history.map(h => ({ role: h.role, parts: [{ text: h.text }] }))
     });
@@ -58,19 +58,23 @@ export const chatWithDesigner = async (history: { role: 'user' | 'model'; text: 
 };
 
 /**
- * Performs an exhaustive spatial scan and strictly matches items with Shopify inventory.
+ * Performs an exhaustive spatial scan and strictly matches items with the selected source inventory.
  */
-export const generateProductList = async (base64Image: string): Promise<ProductItem[]> => {
+export const generateProductList = async (base64Image: string, source: ProductSource = 'PRHOMZ'): Promise<ProductItem[]> => {
   try {
     const base64Data = base64Image.split(',')[1] || base64Image;
     const mimeType = base64Image.substring(base64Image.indexOf(':') + 1, base64Image.indexOf(';')) || 'image/jpeg';
+
+    const sourceInstruction = source === 'PRHOMZ' 
+      ? "Focus on high-end Atelier pieces and artisan decor."
+      : `Strictly identify items that are commonly available on ${source}.com. Identify items that match the inventory catalog of ${source}.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
         parts: [
           { inlineData: { data: base64Data, mimeType: mimeType } },
-          { text: "EXHAUSTIVE INTERIOR ARTIFACT SCAN: Identify all pieces of furniture, lighting, and decor. Provide 'name', 'description', and 'price' (USD). Be very specific about brands or styles shown." }
+          { text: `EXHAUSTIVE INTERIOR ARTIFACT SCAN (SOURCE: ${source}): ${sourceInstruction} Identify all pieces of furniture, lighting, and decor. Provide 'name', 'description', and 'price' (USD). Be very specific about brands or styles shown.` }
         ]
       },
       config: {
@@ -95,7 +99,7 @@ export const generateProductList = async (base64Image: string): Promise<ProductI
     
     // STRICT SOURCE SYNC: Overwrite all AI data with actual catalog matches
     const productsWithMatches = await Promise.all(aiItems.map(async (item: any, index: number) => {
-      const inventoryMatch = await findMatchingInventory(item.name);
+      const inventoryMatch = await findMatchingInventory(item.name, source);
       
       const matchedPrice = (inventoryMatch.price !== undefined && inventoryMatch.price > 0) 
         ? inventoryMatch.price 
