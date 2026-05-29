@@ -1,0 +1,52 @@
+# Cloud Build context — anything not listed here gets uploaded.
+# We override .gitignore inheritance because api/.gitignore excludes `lib/`,
+# which would also strip api/src/lib/ (our source files).
+
+# VCS
+.git
+.gitignore
+.gcloudignore
+
+# Dependency caches (Docker installs fresh inside the image)
+**/node_modules
+
+# Compiled outputs (Docker recompiles inside the image)
+api/lib
+dist
+dist-ssr
+
+# Terraform state and caches
+infra/**/.terraform
+infra/**/.terraform.lock.hcl
+infra/**/terraform.tfvars
+infra/**/tfplan
+**/*.tfstate
+**/*.tfstate.*
+
+# Local secrets — Cloud Run mounts these from Secret Manager
+**/.secret.local
+**/.env.local
+**/.env.local.nonprod
+.env
+
+# Firebase local
+.firebase
+.emulator-data
+.firebaserc
+firebase-debug*.log
+
+# Editor / OS junk
+.DS_Store
+.vscode
+.idea
+*.swp
+*.swo
+
+# Docs / backups — not needed for the build
+project-documentation
+README.md
+*.zip
+~$*
+
+# Logs
+*.log

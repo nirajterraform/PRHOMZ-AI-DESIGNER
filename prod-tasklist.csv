@@ -1,0 +1,50 @@
+ID,Category,Task,Description,Depends_On,Effort,Observability
+PR-01,Project,Create new GCP project,"prhomz-prod under org/folder; separate billing account from non-prod",,S,N
+PR-02,Project,Org policies,"iam.allowedPolicyMemberDomains; compute.requireOsLogin; disable default service account key creation",PR-01,S,N
+PR-03,Project,IAM groups,"prhomz-prod-admins and prhomz-prod-deployers groups; no personal Owner grants",PR-01,S,N
+PR-04,Project,Stripe business verification,"Submit on Day 1 — longest critical-path item (1-3 business days)",,M,N
+PR-05,Code,Vertex AI parity check,"Same Vertex AI swap as non-prod NP-06; confirm code parity between branches",,S,N
+PR-06,Code,Refactor callables to Cloud Run,"Move 8 proxy callables into Express service(s) with Firebase ID-token middleware; CORS allowlist to production origin only",PR-05,L,N
+PR-07,Code,Keep Gen2 event triggers,"onUserCreate, onGalleryImageFinalize, expireOldImages stay as event-driven Cloud Functions",,S,N
+PR-08,Code,Dockerize services,"Dockerfile + .dockerignore per Cloud Run service; /healthz endpoint; non-root user",PR-06,M,N
+PR-09,Code,Frontend wiring update,"Replace httpsCallable() in services/geminiService.ts and services/stripeService.ts with fetch + Bearer ID token; gate on VITE_RUNTIME=cloudrun",PR-06,M,N
+PR-10,Infra,Terraform prod module,"New infra/prod/ with state bucket prhomz-prod-tfstate; versioning + object retention",PR-01,M,N
+PR-11,Infra,Enable APIs,"aiplatform, run, artifactregistry, cloudbuild, cloudtrace, secretmanager, monitoring, logging, cloudprofiler",PR-10,S,N
+PR-12,Infra,Artifact Registry,"Create prhomz-services Docker repo with vulnerability scanning enabled",PR-11,S,N
+PR-13,Infra,Cloud Run services,"Provision via Terraform with min instances, concurrency, CPU/mem limits, dedicated runtime service account",PR-08;PR-12,M,N
+PR-14,Infra,Firestore + PITR,"Native mode in chosen region; PITR enabled; scheduled daily export to GCS",PR-11,M,N
+PR-15,Infra,Storage buckets,"Lifecycle rules + retention; CMEK if compliance requires",PR-11,M,N
+PR-16,Infra,Workload Identity Federation,"GitHub Actions to GCP without long-lived keys",PR-11,M,N
+PR-17,Secrets,Live Stripe secrets,"stripe-secret-key (sk_live_...); stripe-webhook-secret; IAM bound only to runtime service accounts",PR-04;PR-13,S,N
+PR-18,Secrets,Other secrets,"shopify-token; recaptcha-enterprise-key; 90-day rotation policy",PR-13,S,N
+PR-19,Deploy,Backend CI/CD pipeline,"On tag v* build container, push to Artifact Registry, deploy Cloud Run revision at 0% traffic, manual promote to 100%",PR-13;PR-16,L,N
+PR-20,Deploy,Frontend pipeline,"vite build --mode production; firebase deploy --only hosting from same workflow with release tagging",PR-19,M,N
+PR-21,Security,Stripe live webhook,"Register endpoint api.prhomz.com/stripe/webhook in live dashboard; rotate stripe-webhook-secret to live whsec_",PR-17;PR-19,S,N
+PR-22,Security,App Check enforced,"Enforce (not monitor) on all Cloud Run endpoints + Storage + Firestore",PR-19;PR-20,M,N
+PR-23,Security,Rules review,"Audit firestore.rules and storage.rules for any allow read,write: if true paths",PR-14;PR-15,S,N
+PR-24,Security,Real watermark PNG,"Replace the Phase 5 placeholder watermark used on freemium downloads",,S,N
+PR-25,Security,Security review,"Run /security-review on full diff before cutover; remediate Highs/Criticals",PR-22;PR-23;PR-24,M,N
+PR-26,Domain,Custom domains,"app.prhomz.com to Firebase Hosting; api.prhomz.com to Cloud Run domain mapping; verify HSTS + auto TLS",PR-19;PR-20,M,N
+PR-27,Legal,ToS + Privacy + Cookie banner,"Pages live; linked in footer; DPA template if you will sign B2B contracts",,M,N
+PR-28,Legal,GDPR/CCPA deletion path,"Cloud Function that purges user data + Storage objects on user request",PR-14;PR-15,M,N
+PR-29,Observability,Define SLOs,"proxyGenerateImage p95 < 8s and success > 98%; stripeWebhook success > 99.9%; Hosting availability > 99.9%",PR-13;PR-20,M,Y
+PR-30,Observability,Domain dashboards,"AI proxies, Commerce/Stripe, Auth/Firestore, Frontend/Hosting; include cost panel",PR-29,M,Y
+PR-31,Observability,Burn-rate alerts,"Fast 2%/1h + slow 10%/6h burn-rate alerts per SLO; route to PagerDuty/Slack",PR-29,M,Y
+PR-32,Observability,Functional alerts,"Stripe webhook 5xx > 0; Vertex AI 429 spike; Firestore p95 regression; Cloud Run saturation; budget > 80% of monthly cap",PR-29,M,Y
+PR-33,Observability,Log sinks to BigQuery,"Export Cloud Run + Functions logs to dataset prhomz_logs; 30-day partition",PR-19,S,Y
+PR-34,Observability,Log archive to GCS,"Coldline bucket prhomz-prod-logs-archive with 1-year retention for audit",PR-19,S,Y
+PR-35,Observability,Error Reporting,"Group by service; route to PagerDuty; weekly triage review",PR-19,S,Y
+PR-36,Observability,Cloud Trace,"Enable on Cloud Run; propagate traceparent from frontend fetch calls for end-to-end traces",PR-19;PR-20,M,Y
+PR-37,Observability,Cloud Profiler,"Enable on AI proxy services to catch CPU/heap regressions",PR-19,S,Y
+PR-38,Observability,Uptime checks,"app.prhomz.com and api.prhomz.com/healthz from 3 regions at 1-minute interval",PR-26,S,Y
+PR-39,Observability,Audit logs,"Enable Data Access logs for Firestore, Storage, Secret Manager; sink to BigQuery; alert on Secret Manager access from outside prod SAs",PR-33,M,Y
+PR-40,Observability,Frontend RUM,"Sentry or Firebase Performance for Web Vitals + JS errors with release tagging",PR-20,M,Y
+PR-41,Observability,Cost observability,"Billing export to BigQuery + Looker Studio dashboard; daily anomaly check",PR-11,M,Y
+PR-42,Observability,Alert runbooks,"One-pager per alert linked from each policy documentation field",PR-31;PR-32,M,Y
+PR-43,Cutover,Pre-cutover checklist,"Sign-off from security, observability, and legal owners",PR-25;PR-27;PR-42,S,N
+PR-44,Cutover,Lower DNS TTL,"Reduce to 60s 24h before cutover",PR-26,S,N
+PR-45,Cutover,Live cutover,"Flip Stripe webhook to live URL after frontend is live; one-cent real test purchase + refund to validate",PR-21;PR-43;PR-44,M,N
+PR-46,Cutover,Rollback plan,"Hosting revert (one click); Cloud Run revision pin to previous; documented runbook",PR-19;PR-20,S,N
+PR-47,Post-launch,Day-1 monitoring,"On-call coverage for first 24h; daily SLO review through week 1",PR-45,M,N
+PR-48,Post-launch,Tune alerts,"Address noisy alerts from week 1; document tuning decisions",PR-47,S,Y
+PR-49,Post-launch,Phase 7 completion report,"Document cutover decisions, incidents, and follow-ups",PR-47,M,N

@@ -1,21 +1,36 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Download, ShoppingBag, Plus, ImageIcon, CheckCircle2, ChevronRight, Wand2, ShieldCheck, RefreshCcw, Layout, AlertTriangle, Crown, Star, Clock, Zap } from 'lucide-react';
+import { Download, ShoppingBag, Plus, ImageIcon, Wand2, ShieldCheck, RefreshCcw, Layout, Star, Clock, Zap } from 'lucide-react';
 import { remodelImage } from '../services/geminiService';
-import { GeneratedImage, DESIGN_PRESETS, UserAccount, ProductItem } from '../types';
+import { saveProductsToImage } from '../services/galleryService';
+import { GeneratedImage, DESIGN_PRESETS, UserAccount } from '../types';
 import { Button } from './Button';
 import { ShopLookModal } from './ShopLookModal';
+import { QuotaBadge } from './QuotaBadge';
+import { PreRenderWarningModal } from './PreRenderWarningModal';
+import { QuotaExceededModal, type QuotaExceededReason } from './QuotaExceededModal';
+import {
+  isQuotaExhausted,
+  getDailyQuotaSnapshot,
+  getMonthlyQuotaSnapshot,
+} from '../services/quotaService';
 
 interface RemodelerProps {
   onImageGenerated: (image: GeneratedImage) => void;
   initialImage?: string | null;
   onClearInitial?: () => void;
   currentUser: UserAccount | null;
-  onSaveProducts?: (imageUrl: string, products: ProductItem[]) => void;
+  onNavigateToPricing?: () => void;
 }
 
-export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialImage, onClearInitial, currentUser, onSaveProducts }) => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+export const Remodeler: React.FC<RemodelerProps> = ({
+  onImageGenerated,
+  initialImage,
+  onClearInitial,
+  currentUser,
+  onNavigateToPricing,
+}) => {
+  const [, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialImage || null);
   const [instruction, setInstruction] = useState('');
   const [projectName, setProjectName] = useState('');
@@ -23,9 +38,18 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
   const [budget, setBudget] = useState(5000);
   const [isProcessing, setIsProcessing] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(null);
+  const [lastUploadedImageId, setLastUploadedImageId] = useState<string | null>(null);
   const [isShopOpen, setIsShopOpen] = useState(false);
   const [generationTime, setGenerationTime] = useState<number | null>(null);
   const [activeTimer, setActiveTimer] = useState<number>(0);
+  const [warningOpen, setWarningOpen] = useState(false);
+  const [exceededInfo, setExceededInfo] = useState<{
+    reason: QuotaExceededReason;
+    dailyUsed: number;
+    dailyLimit: number;
+    monthlyUsed: number;
+    monthlyLimit: number;
+  } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const timerIntervalRef = useRef<number | null>(null);
@@ -53,16 +77,59 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
     }
   };
 
-  const getRecentRendersCount = () => {
-    if (!currentUser || currentUser.role !== 'Client') return 0;
-    const now = Date.now();
-    const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
-    const history = currentUser.renderTimestamps || [];
-    return history.filter(ts => ts > twentyFourHoursAgo).length;
+  const isQuotaReached = isQuotaExhausted(currentUser);
+
+  const warningStorageKey = (uid: string) => {
+    const utcDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+    return `prhomz:prerender-warning-shown:${uid}:${utcDate}`;
   };
 
-  const rendersUsedToday = getRecentRendersCount();
-  const isQuotaReached = currentUser?.role === 'Client' && rendersUsedToday >= 2;
+  const wasWarningShownToday = (uid: string): boolean => {
+    try {
+      return localStorage.getItem(warningStorageKey(uid)) === '1';
+    } catch {
+      return false;
+    }
+  };
+
+  const markWarningShownToday = (uid: string) => {
+    try {
+      localStorage.setItem(warningStorageKey(uid), '1');
+    } catch {
+      /* localStorage unavailable (private mode) — warning will reappear, acceptable */
+    }
+  };
+
+  const canSubmit =
+    !!previewUrl && (instruction.trim().length > 0 || !!selectedStyle) && !isProcessing && !isQuotaReached;
+
+  const handleRemodelClick = () => {
+    if (!canSubmit || !currentUser) return;
+    const daily = getDailyQuotaSnapshot(currentUser);
+    // Only warn on daily-limited tiers (Freemium / Basic), on the user's last allowed render.
+    if (!daily.isUnlimited && daily.remaining === 1 && !wasWarningShownToday(currentUser.id)) {
+      setWarningOpen(true);
+      return;
+    }
+    void handleRemodel();
+  };
+
+  const handleWarningContinue = () => {
+    if (!currentUser) return;
+    markWarningShownToday(currentUser.id);
+    setWarningOpen(false);
+    void handleRemodel();
+  };
+
+  const handleWarningSeePlans = () => {
+    setWarningOpen(false);
+    onNavigateToPricing?.();
+  };
+
+  const handleExceededUpgrade = () => {
+    setExceededInfo(null);
+    onNavigateToPricing?.();
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -82,34 +149,61 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
   const handleRemodel = async () => {
     if (isQuotaReached) return;
     if (!previewUrl || (!instruction.trim() && !selectedStyle)) return;
-    
+    if (!currentUser) return;
+
     setIsProcessing(true);
     setGenerationTime(null);
     setResultImage(null);
+    setLastUploadedImageId(null);
     const apiStartTime = Date.now();
     startTimer();
-    
+
     try {
       const styleContext = selectedStyle ? DESIGN_PRESETS.find(p => p.id === selectedStyle)?.prompt : '';
       const fullInstruction = `${instruction}. ${styleContext}. Budget Target: $${budget}`.trim();
-      const outputBase64 = await remodelImage(previewUrl, fullInstruction);
-      
+      const result = await remodelImage({
+        base64Image: previewUrl,
+        instruction: fullInstruction,
+        projectName: projectName || 'Untitled Iteration',
+      });
+
       stopTimer();
       const duration = (Date.now() - apiStartTime) / 1000;
       setGenerationTime(duration);
-      setResultImage(outputBase64);
-      
+      setResultImage(result.url);
+      setLastUploadedImageId(result.imageId);
+
       onImageGenerated({
-        id: Date.now().toString(),
-        url: outputBase64,
+        id: result.imageId,
+        url: result.url,
         prompt: fullInstruction,
         mode: 'edit',
         timestamp: Date.now(),
-        projectName: projectName || 'Untitled Iteration'
-      });
+        createdAt: Date.now(),
+        expiresAt: Date.now(),
+        tierAtCreation: currentUser.tier,
+        watermarked: result.watermarked,
+        projectName: projectName || 'Untitled Iteration',
+      } as GeneratedImage);
     } catch (error) {
       stopTimer();
-      alert("Something went wrong with the remodel. Please ensure your prompt focuses on home design.");
+      console.error(error);
+      const err = error as { code?: string; message?: string; details?: { reason?: string } };
+      if (err.code === 'resource-exhausted' && currentUser) {
+        const reason: QuotaExceededReason =
+          err.details?.reason === 'monthly_exceeded' ? 'monthly_exceeded' : 'daily_exceeded';
+        const daily = getDailyQuotaSnapshot(currentUser);
+        const monthly = getMonthlyQuotaSnapshot(currentUser);
+        setExceededInfo({
+          reason,
+          dailyUsed: reason === 'daily_exceeded' && isFinite(daily.limit) ? daily.limit : daily.used,
+          dailyLimit: daily.limit,
+          monthlyUsed: reason === 'monthly_exceeded' && isFinite(monthly.limit) ? monthly.limit : monthly.used,
+          monthlyLimit: monthly.limit,
+        });
+      } else {
+        alert("Something went wrong with the remodel. Please ensure your prompt focuses on home design.");
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -148,29 +242,9 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
         )}
       </header>
 
-      {currentUser?.role === 'Client' && (
-        <div className={`mb-8 p-6 rounded-2xl border flex items-center justify-between ${isQuotaReached ? 'bg-red-400/10 border-red-400/30' : 'bg-google-blue/5 border-google-blue/20'}`}>
-          <div className="flex items-center space-x-4">
-            {isQuotaReached ? <AlertTriangle className="text-red-400" size={24} /> : <Crown className="text-google-blue" size={24} />}
-            <div>
-              <p className={`text-sm font-bold uppercase tracking-widest ${isQuotaReached ? 'text-red-400' : 'text-google-blue'}`}>
-                {isQuotaReached ? 'Daily Quota Reached' : 'Essential Account Quota'}
-              </p>
-              <p className="text-xs text-google-gray font-medium mt-0.5">
-                {isQuotaReached 
-                  ? 'Free users are limited to 2 transformations per 24h. Upgrade for unlimited access.' 
-                  : `${rendersUsedToday}/2 transformations used in the last 24h.`}
-              </p>
-            </div>
-          </div>
-          {!isQuotaReached && (
-            <div className="flex h-2 w-32 bg-google-bg rounded-full overflow-hidden border border-google-border">
-              <div 
-                className="h-full bg-google-blue transition-all duration-1000" 
-                style={{ width: `${(rendersUsedToday / 2) * 100}%` }}
-              />
-            </div>
-          )}
+      {currentUser && (
+        <div className="mb-8">
+          <QuotaBadge user={currentUser} onUpgradeClick={onNavigateToPricing} />
         </div>
       )}
 
@@ -265,11 +339,11 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
             />
           </section>
 
-          <Button 
-            onClick={handleRemodel} 
-            isLoading={isProcessing} 
+          <Button
+            onClick={handleRemodelClick}
+            isLoading={isProcessing}
             className={`w-full rounded-xl py-4.5 text-base font-bold ${isQuotaReached ? 'bg-google-gray cursor-not-allowed' : ''}`}
-            disabled={!previewUrl || (!instruction.trim() && !selectedStyle) || isProcessing || isQuotaReached}
+            disabled={!canSubmit}
           >
             <Wand2 className="w-5 h-5 mr-2" />
             {isQuotaReached ? 'Quota Reached' : initialImage ? 'Apply Refinements' : 'Apply Transformations'}
@@ -344,7 +418,45 @@ export const Remodeler: React.FC<RemodelerProps> = ({ onImageGenerated, initialI
         </div>
       </div>
 
-      {resultImage && <ShopLookModal image={resultImage} isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} budget={budget} onSaveProducts={(products) => onSaveProducts?.(resultImage, products)} />}
+      {currentUser && (
+        <PreRenderWarningModal
+          isOpen={warningOpen}
+          user={currentUser}
+          dailyUsed={getDailyQuotaSnapshot(currentUser).used}
+          dailyLimit={getDailyQuotaSnapshot(currentUser).limit}
+          onContinue={handleWarningContinue}
+          onSeePlans={handleWarningSeePlans}
+          onClose={() => setWarningOpen(false)}
+        />
+      )}
+
+      {currentUser && exceededInfo && (
+        <QuotaExceededModal
+          isOpen={!!exceededInfo}
+          user={currentUser}
+          reason={exceededInfo.reason}
+          dailyUsed={exceededInfo.dailyUsed}
+          dailyLimit={exceededInfo.dailyLimit}
+          monthlyUsed={exceededInfo.monthlyUsed}
+          monthlyLimit={exceededInfo.monthlyLimit}
+          onClose={() => setExceededInfo(null)}
+          onUpgrade={handleExceededUpgrade}
+        />
+      )}
+
+      {resultImage && (
+        <ShopLookModal
+          image={resultImage}
+          isOpen={isShopOpen}
+          onClose={() => setIsShopOpen(false)}
+          budget={budget}
+          onSaveProducts={async (products) => {
+            if (currentUser && lastUploadedImageId) {
+              await saveProductsToImage(currentUser.id, lastUploadedImageId, products);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

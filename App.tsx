@@ -1,97 +1,132 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navigation } from './components/Navigation';
 import { Remodeler } from './components/Remodeler';
 import { Assistant } from './components/Assistant';
 import { Gallery } from './components/Gallery';
+import { Pricing } from './components/Pricing';
 import { AdminDashboard } from './components/AdminDashboard';
 import { Auth } from './components/Auth';
+import { EmailVerificationPending } from './components/EmailVerificationPending';
+import { MockCheckout } from './components/MockCheckout';
+import { MockPortal } from './components/MockPortal';
+import { UpgradeSuccess } from './components/UpgradeSuccess';
 import { AppMode, GeneratedImage, UserAccount, ProductItem } from './types';
-import { ChevronDown, Search, HelpCircle, Settings, Grid, X, Loader2, ShoppingCart, LogOut } from 'lucide-react';
-import { fetchShopifyProducts } from './services/dataService';
+import { Search, HelpCircle, Settings, Grid, X, Loader2, ShoppingCart, LogOut, Crown, AlertTriangle, CalendarClock } from 'lucide-react';
 import { searchCatalog } from './services/geminiService';
+import { onAuthChange, signOut } from './services/authService';
+import { subscribeToUser } from './services/userService';
+import { subscribeToGallery } from './services/galleryService';
+import { createCustomerPortalSession } from './services/stripeService';
+import type { User as FirebaseUser } from 'firebase/auth';
 
 function App() {
+  // Dev-only mock-checkout / mock-portal routes (Phase 4 Track A). Guarded by
+  // import.meta.env.DEV so production bundles can never render these pages.
+  if (import.meta.env.DEV) {
+    if (window.location.pathname === '/__mock-checkout') return <MockCheckout />;
+    if (window.location.pathname === '/__mock-portal') return <MockPortal />;
+  }
+  return <MainApp />;
+}
+
+function MainApp() {
+  const [authUser, setAuthUser] = useState<FirebaseUser | null | undefined>(undefined);
+  const [userDoc, setUserDoc] = useState<UserAccount | null>(null);
+
   const [currentMode, setCurrentMode] = useState<AppMode>(AppMode.REMODEL);
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [activeEditImage, setActiveEditImage] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  
-  // Search State
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<ProductItem[] | null>(null);
 
+  // Phase 4 Day 3: detect post-checkout redirect from Stripe / MockCheckout and
+  // surface the UpgradeSuccess screen. We capture the param once on mount so
+  // that a later soft state change won't accidentally re-trigger it.
+  const [showUpgradeSuccess, setShowUpgradeSuccess] = useState<boolean>(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get('upgrade') === 'success';
+  });
+
+  // Loading state for the profile-dropdown "Manage Subscription" click while
+  // the portal-session callable resolves.
+  const [isOpeningPortal, setIsOpeningPortal] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
+
+  // Subscribe to Firebase auth state
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('prhomz_user');
-      if (storedUser) {
-        setCurrentUser(JSON.parse(storedUser));
+    return onAuthChange((user) => {
+      setAuthUser(user);
+      if (!user) {
+        setUserDoc(null);
       }
-      const storedImages = localStorage.getItem('prhomz_gallery');
-      if (storedImages) {
-        setGeneratedImages(JSON.parse(storedImages));
-      }
-    } catch (e) {
-      console.warn("Failed to load state from localStorage:", e);
-    }
+    });
   }, []);
 
+  // Phase 3 Day 1: the user doc is created by the `onUserCreate` Cloud Function
+  // (Auth trigger). Client just subscribes; the snapshot will arrive once the
+  // Function finishes (usually <500ms after Auth signup).
   useEffect(() => {
-    if (generatedImages.length > 0) {
-      try {
-        // Only attempt to store the last 5 images to stay within 5MB localStorage limits
-        // for this frontend-only prototype. Production apps use S3/GCS.
-        const itemsToStore = generatedImages.slice(-5);
-        localStorage.setItem('prhomz_gallery', JSON.stringify(itemsToStore));
-      } catch (e) {
-        console.error("Gallery exceeds storage quota. Persistence disabled for this session.", e);
-      }
-    }
-  }, [generatedImages]);
+    if (!authUser || !authUser.emailVerified) return;
+    const unsubscribe = subscribeToUser(authUser.uid, setUserDoc);
+    return () => unsubscribe();
+  }, [authUser]);
 
-  const handleLogin = (user: UserAccount) => {
-    setCurrentUser(user);
-    setCurrentMode(AppMode.REMODEL);
-    try {
-      localStorage.setItem('prhomz_user', JSON.stringify(user));
-    } catch (e) {
-      console.error("Failed to save user session:", e);
+  // Gallery now subscribes to Firestore (Phase 2). LocalStorage is no longer read or written.
+  const [isGalleryLoading, setIsGalleryLoading] = useState(true);
+  useEffect(() => {
+    if (!authUser || !authUser.emailVerified) {
+      setGeneratedImages([]);
+      setIsGalleryLoading(false);
+      return;
     }
-  };
+    setIsGalleryLoading(true);
+    const unsubscribe = subscribeToGallery(authUser.uid, (images) => {
+      setGeneratedImages(images);
+      setIsGalleryLoading(false);
+    });
+    return () => unsubscribe();
+  }, [authUser]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('prhomz_user');
-    setCurrentUser(null);
-    setGeneratedImages([]);
+  const handleLogout = async () => {
     setIsProfileOpen(false);
+    setGeneratedImages([]);
+    await signOut();
   };
 
-  const handleImageGenerated = (image: GeneratedImage) => {
-    setGeneratedImages(prev => [...prev, image]);
-    
-    if (currentUser) {
-      const now = Date.now();
-      const updatedUser: UserAccount = {
-        ...currentUser,
-        totalRenders: (currentUser.totalRenders || 0) + 1,
-        renderTimestamps: [...(currentUser.renderTimestamps || []), now]
-      };
-      setCurrentUser(updatedUser);
-      try {
-        localStorage.setItem('prhomz_user', JSON.stringify(updatedUser));
-      } catch (e) {
-        console.warn("User stats quota exceeded in storage.");
-      }
+  const handleManageSubscription = async () => {
+    setIsProfileOpen(false);
+    if (!userDoc) return;
+    // Freemium has no Stripe subscription yet — route them to Pricing instead.
+    if (userDoc.tier === 'freemium') {
+      setCurrentMode(AppMode.PRICING);
+      return;
+    }
+    setIsOpeningPortal(true);
+    setPortalError(null);
+    try {
+      const url = await createCustomerPortalSession();
+      window.location.href = url;
+    } catch (e) {
+      setPortalError((e as { message?: string })?.message || 'Failed to open customer portal.');
+      setIsOpeningPortal(false);
     }
   };
 
-  const handleSaveProductsToImage = (imageUrl: string, products: ProductItem[]) => {
-    setGeneratedImages(prev => prev.map(img => 
-      img.url === imageUrl ? { ...img, savedProducts: products } : img
-    ));
+  const dismissUpgradeSuccess = () => {
+    setShowUpgradeSuccess(false);
+    // Strip the `?upgrade=success` query string so a refresh doesn't re-trigger
+    // the success page.
+    window.history.replaceState({}, '', window.location.pathname);
+  };
+
+  const handleImageGenerated = (_image: GeneratedImage) => {
+    // Image is already persisted to Firestore by the proxy* Cloud Functions,
+    // which also increment quota counters atomically. The user subscription
+    // will surface the new doc and updated counters.
   };
 
   const handleEditFromGallery = (imageUrl: string) => {
@@ -102,13 +137,12 @@ function App() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    
     setIsSearching(true);
     try {
       const results = await searchCatalog(searchQuery);
       setSearchResults(results);
     } catch (error) {
-      console.error("Search failed", error);
+      console.error('Search failed', error);
     } finally {
       setIsSearching(false);
     }
@@ -121,58 +155,120 @@ function App() {
 
   const renderContent = () => {
     switch (currentMode) {
-      case AppMode.REMODEL: 
-        return <Remodeler 
-          onImageGenerated={handleImageGenerated} 
-          initialImage={activeEditImage} 
-          onClearInitial={() => setActiveEditImage(null)}
-          currentUser={currentUser}
-          onSaveProducts={handleSaveProductsToImage}
-        />;
-      case AppMode.ASSISTANT: return <Assistant />;
-      case AppMode.GALLERY: 
-        return <Gallery 
-          images={generatedImages} 
-          onEdit={handleEditFromGallery}
-        />;
-      case AppMode.ADMIN: return <AdminDashboard />;
-      default: return <Remodeler onImageGenerated={handleImageGenerated} currentUser={currentUser} onSaveProducts={handleSaveProductsToImage} />;
+      case AppMode.REMODEL:
+        return (
+          <Remodeler
+            onImageGenerated={handleImageGenerated}
+            initialImage={activeEditImage}
+            onClearInitial={() => setActiveEditImage(null)}
+            currentUser={userDoc}
+            onNavigateToPricing={() => setCurrentMode(AppMode.PRICING)}
+          />
+        );
+      case AppMode.ASSISTANT:
+        return <Assistant />;
+      case AppMode.GALLERY:
+        return (
+          <Gallery
+            images={generatedImages}
+            onEdit={handleEditFromGallery}
+            tier={userDoc?.tier ?? 'freemium'}
+            isLoading={isGalleryLoading}
+            onNavigateToPricing={() => setCurrentMode(AppMode.PRICING)}
+          />
+        );
+      case AppMode.PRICING:
+        return (
+          <Pricing
+            currentTier={userDoc?.tier ?? 'freemium'}
+            subscriptionStatus={userDoc?.subscriptionStatus ?? null}
+          />
+        );
+      case AppMode.ADMIN:
+        return <AdminDashboard />;
+      default:
+        return (
+          <Remodeler
+            onImageGenerated={handleImageGenerated}
+            currentUser={userDoc}
+            onNavigateToPricing={() => setCurrentMode(AppMode.PRICING)}
+          />
+        );
     }
   };
 
-  if (!currentUser) {
-    return <Auth onLogin={handleLogin} />;
+  // Render hierarchy
+  if (authUser === undefined) {
+    return <FullPageSpinner label="Loading..." />;
   }
+  if (authUser === null) {
+    return <Auth />;
+  }
+  if (!authUser.emailVerified) {
+    return <EmailVerificationPending email={authUser.email || ''} />;
+  }
+  if (!userDoc) {
+    return <FullPageSpinner label="Preparing your studio..." />;
+  }
+
+  // Post-checkout landing — swap the whole app for the UpgradeSuccess card
+  // until the user dismisses or navigates. The component itself handles the
+  // race between Stripe redirect and webhook delivery.
+  if (showUpgradeSuccess) {
+    return (
+      <UpgradeSuccess
+        user={userDoc}
+        onStartDesigning={() => {
+          dismissUpgradeSuccess();
+          setCurrentMode(AppMode.REMODEL);
+        }}
+        onGoToGallery={() => {
+          dismissUpgradeSuccess();
+          setCurrentMode(AppMode.GALLERY);
+        }}
+        onDismiss={dismissUpgradeSuccess}
+      />
+    );
+  }
+
+  const showPastDueBanner = userDoc.subscriptionStatus === 'past_due';
+  const showCanceledBanner =
+    userDoc.subscriptionStatus === 'canceled' &&
+    typeof userDoc.currentPeriodEnd === 'number' &&
+    userDoc.currentPeriodEnd > Date.now();
 
   return (
     <div className="min-h-screen bg-google-bg text-google-dark font-sans flex flex-col md:flex-row">
-      <Navigation 
-        currentMode={currentMode} 
+      <Navigation
+        currentMode={currentMode}
         onModeChange={(mode) => {
           setCurrentMode(mode);
           if (mode === AppMode.REMODEL) setActiveEditImage(null);
         }}
         isOpen={isNavOpen}
         setIsOpen={setIsNavOpen}
-        userRole={currentUser?.role || 'Client'}
+        userRole={userDoc.role}
       />
 
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-20 flex items-center justify-between px-6 md:px-10 border-b border-google-border bg-google-bg/95 backdrop-blur-xl sticky top-0 z-30">
           <div className="flex items-center flex-1">
             <div className="md:hidden flex flex-col ml-12">
-               <h1 className="text-lg font-serif italic tracking-tighter text-google-dark leading-none">
-                 PRHOMZ <span className="text-google-blue not-italic font-sans font-black">AI</span>
-               </h1>
+              <h1 className="text-lg font-serif italic tracking-tighter text-google-dark leading-none">
+                PRHOMZ <span className="text-google-blue not-italic font-sans font-black">AI</span>
+              </h1>
             </div>
 
-            <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl bg-google-surface rounded-2xl px-5 py-2.5 items-center border border-google-border shadow-inner focus-within:border-google-blue/50 transition-all relative">
+            <form
+              onSubmit={handleSearch}
+              className="hidden md:flex flex-1 max-w-xl bg-google-surface rounded-2xl px-5 py-2.5 items-center border border-google-border shadow-inner focus-within:border-google-blue/50 transition-all relative"
+            >
               <Search size={16} className="text-google-gray mr-4" />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search PRHOMZ Catalog for furniture..." 
+                placeholder="Search PRHOMZ Catalog for furniture..."
                 className="bg-transparent border-none focus:outline-none text-sm w-full text-google-dark placeholder-google-gray font-medium"
               />
               {isSearching && <Loader2 size={16} className="animate-spin text-google-blue absolute right-4" />}
@@ -183,34 +279,60 @@ function App() {
               )}
             </form>
           </div>
-          
+
           <div className="flex items-center space-x-3 ml-4">
             <div className="hidden lg:flex items-center space-x-1 mr-4">
-               <button className="p-2.5 text-google-gray hover:bg-google-surface hover:text-google-dark rounded-xl transition-all">
-                 <HelpCircle size={18} />
-               </button>
-               <button className="p-2.5 text-google-gray hover:bg-google-surface hover:text-google-dark rounded-xl transition-all">
-                 <Settings size={18} />
-               </button>
-               <button className="p-2.5 text-google-gray hover:bg-google-surface hover:text-google-dark rounded-xl transition-all">
-                 <Grid size={18} />
-               </button>
+              <button className="p-2.5 text-google-gray hover:bg-google-surface hover:text-google-dark rounded-xl transition-all">
+                <HelpCircle size={18} />
+              </button>
+              <button className="p-2.5 text-google-gray hover:bg-google-surface hover:text-google-dark rounded-xl transition-all">
+                <Settings size={18} />
+              </button>
+              <button className="p-2.5 text-google-gray hover:bg-google-surface hover:text-google-dark rounded-xl transition-all">
+                <Grid size={18} />
+              </button>
             </div>
-            
-            <div className="relative pl-6 border-l border-google-border flex items-center space-x-3 group cursor-pointer" onClick={() => setIsProfileOpen(!isProfileOpen)}>
+
+            <div
+              className="relative pl-6 border-l border-google-border flex items-center space-x-3 group cursor-pointer"
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+            >
               <div className="flex flex-col text-right hidden sm:block">
-                 <span className="text-[10px] font-bold text-google-dark uppercase tracking-wider">{currentUser?.name || 'Guest User'}</span>
+                <span className="text-[10px] font-bold text-google-dark uppercase tracking-wider">{userDoc.name}</span>
+                <span className="text-[9px] font-bold text-google-blue uppercase tracking-widest">{userDoc.tier}</span>
               </div>
               <div className="w-10 h-10 rounded-2xl bg-google-blue text-google-bg flex items-center justify-center text-sm font-black shadow-lg shadow-google-blue/20 transition-transform group-hover:scale-105">
-                {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+                {userDoc.name.charAt(0).toUpperCase()}
               </div>
 
               {isProfileOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-google-surface border border-google-border rounded-2xl shadow-2xl p-2 animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute right-0 top-full mt-2 w-56 bg-google-surface border border-google-border rounded-2xl shadow-2xl p-2 animate-in fade-in zoom-in-95 duration-200">
                   <div className="px-4 py-3 border-b border-google-border mb-1">
-                    <p className="text-[10px] font-bold text-google-gray uppercase tracking-widest">{currentUser.email}</p>
+                    <p className="text-[10px] font-bold text-google-gray uppercase tracking-widest truncate">{userDoc.email}</p>
+                    <p className="text-[9px] font-bold text-google-blue uppercase tracking-widest mt-1">{userDoc.tier} tier</p>
                   </div>
-                  <button 
+                  <button
+                    onClick={handleManageSubscription}
+                    disabled={isOpeningPortal}
+                    className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold text-google-dark hover:bg-google-bg rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isOpeningPortal ? (
+                      <Loader2 size={16} className="text-google-blue animate-spin" />
+                    ) : (
+                      <Crown size={16} className="text-google-blue" />
+                    )}
+                    <span>
+                      {isOpeningPortal
+                        ? 'Opening…'
+                        : userDoc.tier === 'freemium'
+                          ? 'Upgrade Membership'
+                          : 'Manage Subscription'}
+                    </span>
+                  </button>
+                  {portalError && (
+                    <p className="px-4 py-2 text-[10px] text-red-400 leading-snug">{portalError}</p>
+                  )}
+                  <button
                     onClick={handleLogout}
                     className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold text-red-400 hover:bg-red-400/10 rounded-xl transition-colors"
                   >
@@ -223,15 +345,54 @@ function App() {
           </div>
         </header>
 
+        {showPastDueBanner && (
+          <div className="bg-orange-400/10 border-b border-orange-400/30 px-6 md:px-10 py-3 flex items-center justify-between">
+            <div className="flex items-center space-x-3 text-orange-400">
+              <AlertTriangle size={16} />
+              <p className="text-xs font-bold uppercase tracking-widest">
+                Payment past due — update your card to keep your {userDoc.tier} benefits.
+              </p>
+            </div>
+            <button
+              onClick={handleManageSubscription}
+              disabled={isOpeningPortal}
+              className="text-[10px] font-bold uppercase tracking-widest text-orange-400 hover:text-google-dark transition-colors disabled:opacity-60"
+            >
+              {isOpeningPortal ? 'Opening…' : 'Update payment'}
+            </button>
+          </div>
+        )}
+
+        {showCanceledBanner && (
+          <div className="bg-google-surface border-b border-google-border px-6 md:px-10 py-3 flex items-center justify-between">
+            <div className="flex items-center space-x-3 text-google-gray">
+              <CalendarClock size={16} />
+              <p className="text-xs font-bold uppercase tracking-widest">
+                Subscription ending {new Date(userDoc.currentPeriodEnd ?? 0).toLocaleDateString()} —
+                renew anytime.
+              </p>
+            </div>
+            <button
+              onClick={handleManageSubscription}
+              disabled={isOpeningPortal}
+              className="text-[10px] font-bold uppercase tracking-widest text-google-blue hover:text-google-dark transition-colors disabled:opacity-60"
+            >
+              {isOpeningPortal ? 'Opening…' : 'Manage plan'}
+            </button>
+          </div>
+        )}
+
         {searchResults && (
           <div className="fixed inset-0 top-20 z-40 bg-google-bg/95 backdrop-blur-md overflow-y-auto animate-fade">
             <div className="max-w-6xl mx-auto p-8 md:p-12">
               <div className="flex justify-between items-end mb-12">
                 <div>
                   <h2 className="text-3xl font-bold text-google-dark">Catalog Results</h2>
-                  <p className="text-google-gray text-xs font-bold uppercase tracking-widest mt-2">Showing matches for "{searchQuery}"</p>
+                  <p className="text-google-gray text-xs font-bold uppercase tracking-widest mt-2">
+                    Showing matches for "{searchQuery}"
+                  </p>
                 </div>
-                <button 
+                <button
                   onClick={clearSearch}
                   className="px-6 py-2.5 rounded-full border border-google-border text-[10px] font-bold uppercase tracking-widest hover:bg-google-surface transition-all flex items-center"
                 >
@@ -241,12 +402,15 @@ function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {searchResults.map((item) => (
-                  <div key={item.id} className="group bg-google-surface rounded-2xl border border-google-border overflow-hidden hover:border-google-blue transition-all shadow-sm flex flex-col">
+                  <div
+                    key={item.id}
+                    className="group bg-google-surface rounded-2xl border border-google-border overflow-hidden hover:border-google-blue transition-all shadow-sm flex flex-col"
+                  >
                     <div className="aspect-square bg-google-bg relative overflow-hidden">
-                      <img 
-                        src={item.imageUrl} 
-                        alt={item.name} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = `https://placehold.co/400x400/1e1e1e/8ab4f8?text=${encodeURIComponent(item.name)}`;
                         }}
@@ -263,10 +427,10 @@ function App() {
                         <p className="text-xs text-google-gray leading-relaxed line-clamp-3">{item.description}</p>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <a 
-                          href={item.productUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
+                        <a
+                          href={item.productUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="flex-1 bg-google-blue text-google-bg py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all flex items-center justify-center"
                         >
                           <ShoppingCart size={14} className="mr-2" /> View on Store
@@ -287,12 +451,17 @@ function App() {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-6 md:p-12 lg:p-16 custom-scrollbar">
-          {renderContent()}
-        </div>
+        <div className="flex-1 overflow-y-auto p-6 md:p-12 lg:p-16 custom-scrollbar">{renderContent()}</div>
       </main>
     </div>
   );
 }
+
+const FullPageSpinner: React.FC<{ label?: string }> = ({ label }) => (
+  <div className="min-h-screen bg-google-bg flex flex-col items-center justify-center text-google-dark">
+    <Loader2 size={32} className="animate-spin text-google-blue mb-4" />
+    {label && <p className="text-xs font-bold uppercase tracking-[0.3em] text-google-gray">{label}</p>}
+  </div>
+);
 
 export default App;

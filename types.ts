@@ -3,6 +3,7 @@ export enum AppMode {
   REMODEL = 'REMODEL',
   ASSISTANT = 'ASSISTANT',
   GALLERY = 'GALLERY',
+  PRICING = 'PRICING',
   ADMIN = 'ADMIN'
 }
 
@@ -10,13 +11,20 @@ export type ProductSource = 'PRHOMZ' | 'Amazon' | 'Wayfair' | 'IKEA';
 
 export interface GeneratedImage {
   id: string;
-  url: string;
+  url: string;                  // Firebase Storage download URL (full-size PNG)
+  storagePath?: string;         // gallery/{uid}/{imageId}.png
+  thumbnailPath?: string;       // gallery/{uid}/{imageId}_thumb.jpg — set by onGalleryImageFinalize Function
+  thumbnailUrl?: string;        // resolved client-side from thumbnailPath via Storage SDK
   prompt: string;
   mode: 'creation' | 'edit';
-  timestamp: number;
+  timestamp: number;            // Legacy alias for createdAt — kept for display code
+  createdAt: number;
+  expiresAt: number;
+  tierAtCreation: UserTier;
+  watermarked: boolean;
   projectName?: string;
   category?: string;
-  savedProducts?: ProductItem[]; // Persisted sourced items
+  savedProducts?: ProductItem[];
 }
 
 export interface ChatMessage {
@@ -46,21 +54,35 @@ export interface AnalyticsSummary {
   revenuePotential: number;
   activeUsers: number;
   usageByTier: {
-    essential: number;
-    signature: number;
-    premium: number;
-    elite: number;
+    freemium: number;
+    basic: number;
+    advanced: number;
+    designer: number;
   };
 }
 
+import type { UserTier } from './shared/tiers';
+export type { UserTier };
+export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | null;
+
 export interface UserAccount {
   id: string;
-  name: string;
   email: string;
+  name: string;
+  photoURL?: string;
   role: 'Client' | 'Designer' | 'Admin';
-  lastActive: number;
+  tier: UserTier;
+  stripeCustomerId?: string | null;
+  subscriptionId?: string | null;
+  subscriptionStatus?: SubscriptionStatus;
+  currentPeriodEnd?: number | null;
+  emailVerified: boolean;
+  renderTimestamps: number[];
   totalRenders: number;
-  renderTimestamps?: number[]; // Added for quota tracking
+  monthlyDesignCount: number;
+  monthlyResetAt: number;
+  createdAt: number;
+  lastActive: number;
 }
 
 export type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';

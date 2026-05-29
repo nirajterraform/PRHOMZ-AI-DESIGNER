@@ -22,3 +22,35 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Firebase
+.firebase/
+.emulator-data/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
+*-debug.log
+.runtimeconfig.json
+
+# Office temp / lock files
+~$*
+
+# Terraform local state + plugin cache (real state lives in GCS)
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# TypeScript build output (api builder)
+api/lib/
+
+# Local backups
+*.backup
+*_backup_*.zip

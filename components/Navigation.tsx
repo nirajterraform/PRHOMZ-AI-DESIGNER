@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { MessageSquare, ImageIcon, ShieldCheck, Sparkles, Menu, X } from 'lucide-react';
+import { MessageSquare, ImageIcon, ShieldCheck, Sparkles, Menu, X, Crown } from 'lucide-react';
 import { AppMode } from '../types';
 
 interface NavigationProps {
@@ -16,6 +16,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentMode, onModeChang
     { mode: AppMode.REMODEL, label: 'Remodel', icon: Sparkles, roles: ['Client', 'Designer', 'Admin'] },
     { mode: AppMode.ASSISTANT, label: 'Assistant', icon: MessageSquare, roles: ['Client', 'Designer', 'Admin'] },
     { mode: AppMode.GALLERY, label: 'Gallery', icon: ImageIcon, roles: ['Client', 'Designer', 'Admin'] },
+    { mode: AppMode.PRICING, label: 'Membership', icon: Crown, roles: ['Client', 'Designer', 'Admin'] },
     { mode: AppMode.ADMIN, label: 'Admin', icon: ShieldCheck, roles: ['Admin'] },
   ];
 

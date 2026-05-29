@@ -1,0 +1,49 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // User doc creation is server-only (onUserCreate Auth trigger). Client
+      // cannot forge a higher tier at signup.
+      allow create: if false;
+
+      // Server-owned fields. The Functions runtime SA bypasses these rules, so
+      // it can still write them; clients cannot touch them.
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'tier',
+          'stripeCustomerId',
+          'subscriptionId',
+          'subscriptionStatus',
+          'currentPeriodEnd',
+          'renderTimestamps',
+          'totalRenders',
+          'monthlyDesignCount',
+          'monthlyResetAt',
+          'role'
+        ]);
+      allow delete: if false;
+
+      // Gallery subcollection
+      //   - read/delete: owner
+      //   - create: server-only (proxyRemodel / proxyGenerateImage write the doc)
+      //   - update: owner, but only the `savedProducts` field (Shop the Look save)
+      match /gallery/{imageId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create: if false;
+        allow update: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['savedProducts']);
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

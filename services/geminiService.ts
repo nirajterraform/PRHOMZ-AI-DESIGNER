@@ -1,203 +1,105 @@
-
-import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
+import { apiPost } from "./apiClient";
 import { AspectRatio, ProductItem, ProductSource } from "../types";
-import { findMatchingInventory } from "./dataService";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+interface ProxyImageResult {
+  imageId: string;
+  url: string;
+  storagePath: string;
+  watermarked: boolean;
+  tier: string;
+  monthlyUsed: number;
+  monthlyLimit: number;
+  dailyUsed: number;
+  dailyLimit: number;
+}
 
-export const generateDesignImage = async (prompt: string, aspectRatio: AspectRatio = "16:9"): Promise<string> => {
+export interface RemodelOptions {
+  base64Image: string;
+  instruction: string;
+  projectName?: string;
+}
+
+export interface GenerateOptions {
+  prompt: string;
+  aspectRatio?: AspectRatio;
+  projectName?: string;
+}
+
+async function toBase64DataUrl(image: string): Promise<string> {
+  if (image.startsWith("data:")) return image;
+  const res = await fetch(image);
+  const blob = await res.blob();
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+export const remodelImage = (opts: RemodelOptions): Promise<ProxyImageResult> =>
+  apiPost<RemodelOptions, ProxyImageResult>("/proxyRemodel", opts);
+
+export const generateDesignImage = (opts: GenerateOptions): Promise<ProxyImageResult> =>
+  apiPost<GenerateOptions, ProxyImageResult>("/proxyGenerateImage", opts);
+
+export const chatWithDesigner = async (
+  history: { role: "user" | "model"; text: string }[],
+  newMessage: string,
+): Promise<string> => {
   try {
-    const industryConstraint = "PHOTOREALISTIC HIGH-END INTERIOR DESIGN AND HOME FURNISHING VISION: ";
-    const styleSuffix = ", architectural photography, detailed textures, interior decor focus, avoid people, focus on furniture and room layout.";
-    const finalPrompt = `${industryConstraint} ${prompt} ${styleSuffix}`;
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: { parts: [{ text: finalPrompt }] },
-      config: { imageConfig: { aspectRatio: aspectRatio } }
-    });
-    if (response.candidates?.[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData && part.inlineData.data) return `data:image/png;base64,${part.inlineData.data}`;
-      }
-    }
-    throw new Error("No image data found");
-  } catch (error) { console.error(error); throw error; }
+    const result = await apiPost<
+      { history: typeof history; message: string },
+      { text: string }
+    >("/proxyChat", { history, message: newMessage });
+    return result.text;
+  } catch (error) {
+    console.error(error);
+    return "Connection error";
+  }
 };
 
-export const remodelImage = async (base64Image: string, instruction: string): Promise<string> => {
+export const generateProductList = async (
+  image: string,
+  source: ProductSource = "PRHOMZ",
+): Promise<ProductItem[]> => {
+  const base64Image = await toBase64DataUrl(image);
   try {
-    const base64Data = base64Image.split(',')[1] || base64Image;
-    const mimeType = base64Image.substring(base64Image.indexOf(':') + 1, base64Image.indexOf(';')) || 'image/jpeg';
-    const redesignConstraint = "INTERIOR REDESIGN & FURNISHING UPGRADE: Modify this room by ";
-    const finalInstruction = `${redesignConstraint} ${instruction}. Maintain consistent architectural perspective.`;
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [{ inlineData: { data: base64Data, mimeType: mimeType } }, { text: finalInstruction }]
-      }
-    });
-    if (response.candidates?.[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData && part.inlineData.data) return `data:image/png;base64,${part.inlineData.data}`;
-      }
-    }
-    throw new Error("No edited image returned");
-  } catch (error) { console.error(error); throw error; }
-};
-
-export const chatWithDesigner = async (history: { role: 'user' | 'model'; text: string }[], newMessage: string): Promise<string> => {
-  try {
-    const chat = ai.chats.create({
-      model: 'gemini-3.1-pro-preview',
-      config: { systemInstruction: "You are PRHOMZ AI DESIGNER. You provide elite interior advice and help users curate luxury spaces." },
-      history: history.map(h => ({ role: h.role, parts: [{ text: h.text }] }))
-    });
-    const response = await chat.sendMessage({ message: newMessage });
-    return response.text || "No response";
-  } catch (error) { console.error(error); return "Connection error"; }
-};
-
-/**
- * Performs an exhaustive spatial scan and strictly matches items with the selected source inventory.
- */
-export const generateProductList = async (base64Image: string, source: ProductSource = 'PRHOMZ'): Promise<ProductItem[]> => {
-  try {
-    const base64Data = base64Image.split(',')[1] || base64Image;
-    const mimeType = base64Image.substring(base64Image.indexOf(':') + 1, base64Image.indexOf(';')) || 'image/jpeg';
-
-    const sourceInstruction = source === 'PRHOMZ' 
-      ? "Focus on high-end Atelier pieces and artisan decor."
-      : `Strictly identify items that are commonly available on ${source}.com. Identify items that match the inventory catalog of ${source}.`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: {
-        parts: [
-          { inlineData: { data: base64Data, mimeType: mimeType } },
-          { text: `EXHAUSTIVE INTERIOR ARTIFACT SCAN (SOURCE: ${source}): ${sourceInstruction} Identify all pieces of furniture, lighting, and decor. Provide 'name', 'description', and 'price' (USD). Be very specific about brands or styles shown.` }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING },
-              description: { type: Type.STRING },
-              price: { type: Type.NUMBER },
-              colors: { type: Type.ARRAY, items: { type: Type.STRING } }
-            },
-            required: ["name", "price", "colors", "description"]
-          }
-        }
-      }
-    });
-
-    const aiItems = JSON.parse(response.text || "[]");
-    
-    // STRICT SOURCE SYNC: Overwrite all AI data with actual catalog matches
-    const productsWithMatches = await Promise.all(aiItems.map(async (item: any, index: number) => {
-      const inventoryMatch = await findMatchingInventory(item.name, source);
-      
-      const matchedPrice = (inventoryMatch.price !== undefined && inventoryMatch.price > 0) 
-        ? inventoryMatch.price 
-        : item.price;
-
-      return {
-        ...item,
-        id: `prod-${Date.now()}-${index}`,
-        shopifyId: inventoryMatch.shopifyId,
-        productUrl: inventoryMatch.productUrl,
-        stockLevel: inventoryMatch.stockLevel,
-        price: matchedPrice,
-        imageUrl: inventoryMatch.imageUrl || "",
-        name: inventoryMatch.name || item.name,
-        isSynced: !!inventoryMatch.shopifyId && inventoryMatch.shopifyId !== 'external_referral'
-      } as ProductItem;
-    }));
-
-    return productsWithMatches;
-  } catch (error) { console.error(error); return []; }
+    const result = await apiPost<
+      { base64Image: string; source: ProductSource },
+      { products: ProductItem[] }
+    >("/proxyGenerateProductList", { base64Image, source });
+    return result.products;
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
 };
 
 export const searchCatalog = async (query: string): Promise<ProductItem[]> => {
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: { parts: [{ text: `Search luxury catalog for items matching: "${query}". Return name, description, price, colors.` }] },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING },
-              description: { type: Type.STRING },
-              price: { type: Type.NUMBER },
-              colors: { type: Type.ARRAY, items: { type: Type.STRING } }
-            },
-            required: ["name", "price", "colors", "description"]
-          }
-        }
-      }
-    });
-    const items = JSON.parse(response.text || "[]");
-    
-    const searchResultsWithMatches = await Promise.all(items.map(async (item: any, index: number) => {
-      const inventoryMatch = await findMatchingInventory(item.name);
-      return {
-        ...item,
-        id: `search-${Date.now()}-${index}`,
-        shopifyId: inventoryMatch.shopifyId,
-        productUrl: inventoryMatch.productUrl,
-        imageUrl: inventoryMatch.imageUrl || "",
-        price: inventoryMatch.price || item.price
-      };
-    }));
-
-    return searchResultsWithMatches;
-  } catch (error) { console.error(error); return []; }
+    const result = await apiPost<{ query: string }, { products: ProductItem[] }>(
+      "/proxyShopifySearch",
+      { query },
+    );
+    return result.products;
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
 };
 
-export const swapProduct = async (base64Image: string, currentProduct: ProductItem): Promise<ProductItem> => {
-  try {
-    const base64Data = base64Image.split(',')[1] || base64Image;
-    const mimeType = base64Image.substring(base64Image.indexOf(':') + 1, base64Image.indexOf(';')) || 'image/jpeg';
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: {
-        parts: [
-          { inlineData: { data: base64Data, mimeType: mimeType } },
-          { text: `Suggest an alternative piece for "${currentProduct.name}". Return name, description, price, colors.` }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            name: { type: Type.STRING },
-            description: { type: Type.STRING },
-            price: { type: Type.NUMBER },
-            colors: { type: Type.ARRAY, items: { type: Type.STRING } }
-          },
-          required: ["name", "price", "colors", "description"]
-        }
-      }
-    });
-    const item = JSON.parse(response.text || "{}");
-    const inventoryMatch = await findMatchingInventory(item.name);
-
-    return { 
-      ...item, 
-      id: `swap-${Date.now()}`, 
-      shopifyId: inventoryMatch.shopifyId,
-      productUrl: inventoryMatch.productUrl,
-      imageUrl: inventoryMatch.imageUrl || "",
-      price: inventoryMatch.price || item.price
-    };
-  } catch (error) { console.error(error); throw error; }
+export const swapProduct = async (
+  image: string,
+  currentProduct: ProductItem,
+): Promise<ProductItem> => {
+  const base64Image = await toBase64DataUrl(image);
+  const result = await apiPost<
+    { base64Image: string; currentProduct: { name: string } },
+    { product: ProductItem }
+  >("/proxySwapProduct", {
+    base64Image,
+    currentProduct: { name: currentProduct.name },
+  });
+  return result.product;
 };

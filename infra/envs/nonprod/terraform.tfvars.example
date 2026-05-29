@@ -1,0 +1,3 @@
+project_id         = "your-nonprod-project-id"
+region             = "us-central1"
+billing_account_id = "0XXXXX-XXXXXX-XXXXXX"

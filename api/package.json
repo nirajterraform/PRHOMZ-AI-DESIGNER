@@ -1,0 +1,35 @@
+{
+  "name": "prhomz-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PRHOMZ AI Designer — Cloud Run API (Express)",
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "prebuild": "rm -rf src/_shared && mkdir -p src/_shared && cp -R ../shared/* src/_shared/",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "dev": "tsx watch src/index.ts",
+    "start": "node lib/index.js"
+  },
+  "dependencies": {
+    "@google/genai": "^1.34.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.0",
+    "google-auth-library": "^9.15.0",
+    "helmet": "^8.0.0",
+    "sharp": "^0.34.0",
+    "stripe": "^22.1.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "~5.8.2"
+  }
+}

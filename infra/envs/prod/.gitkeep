@@ -1,0 +1,2 @@
+Placeholder. Prod env will mirror envs/nonprod/ once non-prod is validated.
+Copy nonprod/*.tf here, point backend.tf at prhomzmvp-prod-tfstate, and create terraform.tfvars with the prod project_id and live billing account.

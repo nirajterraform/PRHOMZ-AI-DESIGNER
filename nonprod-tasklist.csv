@@ -1,0 +1,23 @@
+ID,Category,Task,Description,Depends_On,Effort,Observability
+NP-01,Project,Set up GCP project,"Reuse prhomz-dev-code-test or create prhomz-nonprod; link billing; set $50/mo budget alert",,S,N
+NP-02,Project,IAM groups and access,"Create prhomz-nonprod-admins and prhomz-nonprod-deployers groups; no personal Owner grants",NP-01,S,N
+NP-03,Infra,Enable required APIs,"Includes aiplatform.googleapis.com for Vertex AI in addition to the existing apis.tf list",NP-01,S,N
+NP-04,Infra,Remote Terraform state,"Create GCS bucket prhomz-nonprod-tfstate with versioning enabled",NP-01,S,N
+NP-05,Infra,Apply Terraform stack,"cd infra; terraform apply with nonprod tfvars; capture firebase_web_config output",NP-03;NP-04,M,N
+NP-06,Code,Swap Gemini to Vertex AI,"Replace @google/genai with @google-cloud/vertexai in proxyRemodel, proxyGenerateImage, proxyChat, proxyGenerateProductList, proxySwapProduct; remove gemini-api-key reads from _shared/secrets",,M,N
+NP-07,Code,Grant Vertex AI IAM,"Bind roles/aiplatform.user to the Cloud Functions Gen2 runtime service account",NP-05;NP-06,S,N
+NP-08,Secrets,Populate Secret Manager (sandbox),"shopify-token; stripe-secret-key (sk_test_...); stripe-webhook-secret placeholder; no gemini key needed after NP-06",NP-05,S,N
+NP-09,Deploy,Build and deploy Functions,"cd functions; npm ci; npm run build; firebase deploy --only functions",NP-06;NP-07;NP-08,M,N
+NP-10,Deploy,Add Firebase Hosting block,"Edit firebase.json to add hosting config (public=dist, SPA rewrite to /index.html)",NP-05,S,N
+NP-11,Deploy,Create .env.staging,"Set VITE_USE_FIREBASE_EMULATOR=false and Firebase web config values from Terraform output",NP-05,S,N
+NP-12,Deploy,Build and deploy frontend,"npx vite build --mode staging; firebase deploy --only hosting; capture Hosting URL",NP-10;NP-11,S,N
+NP-13,Security,Register Stripe sandbox webhook,"Add endpoint pointing to deployed stripeWebhook URL; rotate stripe-webhook-secret to whsec_ value",NP-09,S,N
+NP-14,Security,App Check (monitor mode),"Register reCAPTCHA Enterprise key; enable App Check in monitor mode so demos do not break on misconfig",NP-09;NP-12,S,N
+NP-15,Test,End-to-end smoke test,"Signup; email verify; free generation; upgrade with card 4242 4242 4242 4242; quota refresh; customer portal opens",NP-13;NP-14,S,N
+NP-16,Observability,Verify Cloud Logging,"Confirm logs flow from Functions, Firestore, and Storage (on by default but verify)",NP-09,S,Y
+NP-17,Observability,Log-based metrics,"Create stripe_webhook_failures, vertex_quota_429, and auth_failures log-based metrics",NP-16,S,Y
+NP-18,Observability,Monitoring dashboard,"One dashboard with function invocations, p95 latency, 5xx rate, Firestore reads/writes, Storage egress",NP-17,S,Y
+NP-19,Observability,Error Reporting,"Confirm Error Reporting is enabled; add yourself as an email notification channel",NP-16,S,Y
+NP-20,Observability,Uptime check,"1-minute uptime check on Hosting URL with email alert on failure",NP-12,S,Y
+NP-21,Observability,Basic alert policies,"Webhook failures > 0 in 5m; function error rate > 5% in 10m; Vertex AI 429 spike",NP-17,S,Y
+NP-22,Handoff,Stakeholder UAT package,"Share URL, test card details, known sandbox limitations; collect feedback",NP-15;NP-21,S,N

@@ -16,7 +16,7 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
   const [budget, setBudget] = useState(10000); // Default budget for generation
   const [isGenerating, setIsGenerating] = useState(false);
-  const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [currentImage, setCurrentImage] = useState<string>('');
   const [isShopOpen, setIsShopOpen] = useState(false);
 
   const handleGenerate = async (e: React.FormEvent) => {
@@ -29,14 +29,18 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
         : '';
       const finalPrompt = `${prompt} ${styleContext}`.trim();
       
-      const base64Image = await generateDesignImage(finalPrompt, aspectRatio);
-      setCurrentImage(base64Image);
+      const result = await generateDesignImage({ prompt: finalPrompt, aspectRatio });
+      setCurrentImage(result.url);
       onImageGenerated({
-        id: Date.now().toString(),
-        url: base64Image,
+        id: result.imageId,
+        url: result.url,
         prompt: finalPrompt,
         mode: 'creation',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        createdAt: Date.now(),
+        expiresAt: Date.now(),
+        tierAtCreation: 'freemium',
+        watermarked: result.watermarked,
       });
     } catch (error) {
       console.error(error);
