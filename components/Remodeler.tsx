@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Download, ShoppingBag, Plus, ImageIcon, Wand2, ShieldCheck, RefreshCcw, Layout, Star, Clock, Zap } from 'lucide-react';
 import { remodelImage } from '../services/geminiService';
 import { saveProductsToImage } from '../services/galleryService';
+import { downloadImage } from '../services/downloadImage';
 import { GeneratedImage, DESIGN_PRESETS, UserAccount } from '../types';
 import { Button } from './Button';
 import { ShopLookModal } from './ShopLookModal';
@@ -373,13 +374,8 @@ export const Remodeler: React.FC<RemodelerProps> = ({
                     <ShoppingBag className="w-5 h-5 mr-2" />
                     Shop Furnishings
                   </Button>
-                  <button 
-                    onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = resultImage;
-                      link.download = 'remodel.png';
-                      link.click();
-                    }}
+                  <button
+                    onClick={() => downloadImage(resultImage, 'remodel.png')}
                     className="p-4 bg-google-surface/60 backdrop-blur-md text-google-dark rounded-full hover:bg-google-surface transition-all shadow-xl border border-google-border hover:scale-110 active:scale-90"
                   >
                     <Download size={24} />

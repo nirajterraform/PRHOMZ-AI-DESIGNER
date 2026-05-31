@@ -5,6 +5,7 @@ import { SHOPIFY_STORE_URL } from '../services/dataService';
 import { ExpiryChip } from './ExpiryChip';
 import { RETENTION_DAYS_BY_TIER } from '../services/galleryService';
 import { applySlotCap } from '../services/gallerySlotsService';
+import { downloadImage } from '../services/downloadImage';
 
 interface GalleryProps {
   images: GeneratedImage[];
@@ -164,16 +165,14 @@ export const Gallery: React.FC<GalleryProps> = ({ images, onEdit, tier, isLoadin
                 >
                   <Edit3 size={20} />
                 </button>
-                <a
-                  href={img.url}
-                  download={`prhomz-${img.id}.png`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => downloadImage(img.url, `prhomz-${img.id}.png`)}
                   className="p-3 bg-google-dark text-google-bg rounded-full hover:bg-white transition-all shadow-lg"
                   title={img.watermarked ? 'Freemium exports will include a watermark — upgrade to remove' : 'Download'}
                 >
                   <Download size={20} />
-                </a>
+                </button>
               </div>
               <div className="absolute top-4 left-4 bg-google-bg/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-google-border flex items-center space-x-2">
                 <FolderOpen size={12} className="text-google-blue" />
