@@ -51,13 +51,16 @@ resource "google_monitoring_dashboard" "cost" {
           width  = 3
           height = 3
           widget = {
-            title = "Gemini image gen ($/hr)"
+            title = "Gemini image gen (avg $/hr, 6h window)"
             scorecard = {
               timeSeriesQuery = {
+                # rate(6h) keeps the value defined even during idle hours.
+                # Log-based DELTA metrics emit no points during 0-event periods,
+                # which causes align rate(1h) to return "No data" between gens.
                 timeSeriesQueryLanguage = <<-MQL
                   fetch cloud_run_revision
                   | metric 'logging.googleapis.com/user/image_generation_count'
-                  | align rate(1h)
+                  | align rate(6h)
                   | every 1m
                   | group_by [], [v: sum(value)]
                   | value [v * 0.04]
@@ -106,7 +109,7 @@ resource "google_monitoring_dashboard" "cost" {
               timeSeriesQuery = {
                 timeSeriesQueryLanguage = <<-MQL
                   fetch cloud_run_revision
-                  | metric 'run.googleapis.com/container/cpu/usage_time'
+                  | metric 'run.googleapis.com/container/cpu/allocation_time'
                   | align rate(1h)
                   | every 1m
                   | group_by [], [v: sum(value)]
@@ -128,7 +131,7 @@ resource "google_monitoring_dashboard" "cost" {
             scorecard = {
               timeSeriesQuery = {
                 timeSeriesQueryLanguage = <<-MQL
-                  fetch firestore.googleapis.com/Database
+                  fetch firestore_instance
                   | metric 'firestore.googleapis.com/document/read_count'
                   | align rate(1h)
                   | every 1m
@@ -218,7 +221,7 @@ resource "google_monitoring_dashboard" "cost" {
               timeSeriesQuery = {
                 timeSeriesQueryLanguage = <<-MQL
                   fetch cloud_run_revision
-                  | metric 'run.googleapis.com/container/cpu/usage_time'
+                  | metric 'run.googleapis.com/container/cpu/allocation_time'
                   | align delta(1d)
                   | every 1d
                   | group_by [], [v: sum(value)]
@@ -239,7 +242,7 @@ resource "google_monitoring_dashboard" "cost" {
             scorecard = {
               timeSeriesQuery = {
                 timeSeriesQueryLanguage = <<-MQL
-                  fetch firestore.googleapis.com/Database
+                  fetch firestore_instance
                   | metric 'firestore.googleapis.com/document/read_count'
                   | align delta(1d)
                   | every 1d
@@ -300,7 +303,7 @@ resource "google_monitoring_dashboard" "cost" {
                   timeSeriesQuery = {
                     timeSeriesQueryLanguage = <<-MQL
                       fetch cloud_run_revision
-                      | metric 'run.googleapis.com/container/cpu/usage_time'
+                      | metric 'run.googleapis.com/container/cpu/allocation_time'
                       | align rate(1h)
                       | every 5m
                       | group_by [], [v: sum(value)]
@@ -327,7 +330,7 @@ resource "google_monitoring_dashboard" "cost" {
                 {
                   timeSeriesQuery = {
                     timeSeriesQueryLanguage = <<-MQL
-                      fetch firestore.googleapis.com/Database
+                      fetch firestore_instance
                       | metric 'firestore.googleapis.com/document/read_count'
                       | align rate(1h)
                       | every 5m
