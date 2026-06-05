@@ -39,9 +39,9 @@ export const Navigation: React.FC<NavigationProps> = ({ currentMode, onModeChang
       `}>
         <div className="flex flex-col h-full">
           {/* REFINED BRANDING BLOCK */}
-          <div className="h-28 flex flex-col justify-center px-8 border-b border-google-border bg-gradient-to-b from-google-surface/20 to-transparent">
-            <h1 className="text-2xl font-serif italic tracking-tighter text-google-dark leading-none">
-              PRHOMZ <span className="text-google-blue not-italic font-sans font-black ml-0.5">AI</span>
+          <div className="h-20 flex flex-col justify-center px-8 border-b border-google-border bg-gradient-to-b from-google-surface/20 to-transparent">
+            <h1 className="text-lg font-serif italic tracking-tighter text-google-dark leading-none whitespace-nowrap">
+              PRHOMZ <span className="text-google-blue not-italic font-sans font-black ml-0.5">AI DESIGNER</span>
             </h1>
           </div>
 
@@ -69,17 +69,6 @@ export const Navigation: React.FC<NavigationProps> = ({ currentMode, onModeChang
             })}
           </div>
 
-          <div className="p-8 border-t border-google-border bg-google-surface/10">
-             <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 rounded-2xl bg-google-surface border border-google-border flex items-center justify-center shadow-inner">
-                   <ShieldCheck size={22} className="text-google-blue" />
-                </div>
-                <div className="overflow-hidden">
-                   <p className="text-sm font-bold text-google-dark truncate">Signature Member</p>
-                   <p className="text-xs text-google-gray truncate font-bold uppercase tracking-widest mt-0.5">PRO Verified</p>
-                </div>
-             </div>
-          </div>
         </div>
       </aside>
 

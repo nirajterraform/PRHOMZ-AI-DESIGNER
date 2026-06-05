@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { jsPDF } from 'jspdf';
 import { GeneratedImage, ProductItem, UserTier } from '../types';
 import { Download, Calendar, ArrowUpRight, Maximize2, Trash2, Edit3, FolderOpen, ShoppingBag, X, ExternalLink, Package, ShoppingCart, Sparkles, Crown, Archive, AlertTriangle } from 'lucide-react';
 import { SHOPIFY_STORE_URL } from '../services/dataService';
@@ -312,12 +313,89 @@ export const Gallery: React.FC<GalleryProps> = ({ images, onEdit, tier, isLoadin
               </div>
               <button
                 onClick={() => {
-                  const blob = new Blob([JSON.stringify(viewingProducts.savedProducts, null, 2)], { type: 'application/json' });
-                  const url = URL.createObjectURL(blob);
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.download = `sourcing-manifest-${viewingProducts.id}.json`;
-                  link.click();
+                  const items = viewingProducts.savedProducts || [];
+                  const total = items.reduce((acc, curr) => acc + curr.price, 0);
+                  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+                  const pageWidth = doc.internal.pageSize.getWidth();
+                  const pageHeight = doc.internal.pageSize.getHeight();
+                  const marginX = 48;
+                  let y = 56;
+
+                  doc.setFont('helvetica', 'bold');
+                  doc.setFontSize(18);
+                  doc.text('Sourced Artifacts — Curation Manifest', marginX, y);
+                  y += 22;
+
+                  doc.setFont('helvetica', 'normal');
+                  doc.setFontSize(10);
+                  doc.setTextColor(110);
+                  const dateStr = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                  doc.text(
+                    `${viewingProducts.projectName || 'Untitled Iteration'}  ·  ${items.length} item${items.length === 1 ? '' : 's'}  ·  ${dateStr}`,
+                    marginX,
+                    y,
+                  );
+                  y += 22;
+                  doc.setDrawColor(220);
+                  doc.line(marginX, y, pageWidth - marginX, y);
+                  y += 20;
+
+                  doc.setTextColor(30);
+                  items.forEach((item, idx) => {
+                    if (y > pageHeight - 120) {
+                      doc.addPage();
+                      y = 56;
+                    }
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(11);
+                    const nameLines = doc.splitTextToSize(`${idx + 1}. ${item.name}`, pageWidth - marginX * 2 - 90);
+                    doc.text(nameLines, marginX, y);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(12);
+                    doc.setTextColor(40, 90, 220);
+                    doc.text(`$${item.price.toLocaleString()}`, pageWidth - marginX, y, { align: 'right' });
+                    doc.setTextColor(30);
+                    y += nameLines.length * 14;
+
+                    if (item.isSynced) {
+                      doc.setFont('helvetica', 'normal');
+                      doc.setFontSize(8);
+                      doc.setTextColor(40, 90, 220);
+                      doc.text('SOURCE VERIFIED', marginX, y);
+                      doc.setTextColor(110);
+                      y += 12;
+                    }
+
+                    if (item.productUrl) {
+                      doc.setFont('helvetica', 'normal');
+                      doc.setFontSize(9);
+                      doc.setTextColor(80, 80, 200);
+                      doc.textWithLink(item.productUrl, marginX, y, { url: item.productUrl });
+                      doc.setTextColor(30);
+                      y += 14;
+                    }
+
+                    y += 10;
+                    doc.setDrawColor(235);
+                    doc.line(marginX, y - 4, pageWidth - marginX, y - 4);
+                    y += 6;
+                  });
+
+                  if (y > pageHeight - 80) {
+                    doc.addPage();
+                    y = 56;
+                  } else {
+                    y += 8;
+                  }
+                  doc.setFont('helvetica', 'bold');
+                  doc.setFontSize(10);
+                  doc.setTextColor(110);
+                  doc.text('CURATION MANIFEST TOTAL', marginX, y);
+                  doc.setFontSize(20);
+                  doc.setTextColor(20);
+                  doc.text(`$${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - marginX, y, { align: 'right' });
+
+                  doc.save(`sourcing-manifest-${viewingProducts.id}.pdf`);
                 }}
                 className="w-full sm:w-auto px-8 py-4 bg-google-dark text-google-bg rounded-2xl text-xs font-bold uppercase tracking-[0.2em] shadow-xl hover:brightness-110 transition-all"
               >

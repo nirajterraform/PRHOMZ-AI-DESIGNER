@@ -37,8 +37,10 @@ async function toBase64DataUrl(image: string): Promise<string> {
   });
 }
 
-export const remodelImage = (opts: RemodelOptions): Promise<ProxyImageResult> =>
-  apiPost<RemodelOptions, ProxyImageResult>("/proxyRemodel", opts);
+export const remodelImage = async (opts: RemodelOptions): Promise<ProxyImageResult> => {
+  const base64Image = await toBase64DataUrl(opts.base64Image);
+  return apiPost<RemodelOptions, ProxyImageResult>("/proxyRemodel", { ...opts, base64Image });
+};
 
 export const generateDesignImage = (opts: GenerateOptions): Promise<ProxyImageResult> =>
   apiPost<GenerateOptions, ProxyImageResult>("/proxyGenerateImage", opts);

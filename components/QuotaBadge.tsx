@@ -4,6 +4,7 @@ import type { UserAccount } from "../types";
 import {
   getDailyQuotaSnapshot,
   getMonthlyQuotaSnapshot,
+  getMonthlyResetAt,
   type QuotaSeverity,
   type QuotaSnapshot,
 } from "../services/quotaService";
@@ -28,6 +29,7 @@ export const QuotaBadge: React.FC<QuotaBadgeProps> = ({ user, onUpgradeClick }) 
 
   const daily = getDailyQuotaSnapshot(user);
   const monthly = getMonthlyQuotaSnapshot(user);
+  const monthlyResetAt = getMonthlyResetAt(user);
 
   // Designer (both unlimited) gets no chip — render a single "Unlimited" indicator instead.
   if (daily.isUnlimited && monthly.isUnlimited) {
@@ -50,6 +52,7 @@ export const QuotaBadge: React.FC<QuotaBadgeProps> = ({ user, onUpgradeClick }) 
           label="This month"
           snapshot={monthly}
           onUpgradeClick={onUpgradeClick}
+          resetAt={monthlyResetAt}
         />
       )}
     </div>
@@ -61,9 +64,10 @@ interface QuotaChipProps {
   label: string;
   snapshot: QuotaSnapshot;
   onUpgradeClick?: () => void;
+  resetAt?: number | null;
 }
 
-const QuotaChip: React.FC<QuotaChipProps> = ({ icon: Icon, label, snapshot, onUpgradeClick }) => {
+const QuotaChip: React.FC<QuotaChipProps> = ({ icon: Icon, label, snapshot, onUpgradeClick, resetAt }) => {
   const styles = chipStyles(snapshot.severity);
   const isExhausted = snapshot.severity === "exhausted";
   const interactive = isExhausted && !!onUpgradeClick;
@@ -96,6 +100,12 @@ const QuotaChip: React.FC<QuotaChipProps> = ({ icon: Icon, label, snapshot, onUp
         />
       </div>
 
+      {resetAt && (
+        <p className={`mt-2 text-[9px] font-bold uppercase tracking-widest ${styles.subtextClass}`}>
+          Resets {formatResetDate(resetAt)}
+        </p>
+      )}
+
       {isExhausted && onUpgradeClick && (
         <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-red-400">
           Upgrade for more →
@@ -121,6 +131,16 @@ const QuotaChip: React.FC<QuotaChipProps> = ({ icon: Icon, label, snapshot, onUp
     </div>
   );
 };
+
+function formatResetDate(epochMs: number): string {
+  const d = new Date(epochMs);
+  const dayDiff = Math.ceil((epochMs - Date.now()) / (24 * 60 * 60 * 1000));
+  const dateStr = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  if (dayDiff <= 0) return `on ${dateStr}`;
+  if (dayDiff === 1) return "tomorrow";
+  if (dayDiff <= 7) return `in ${dayDiff} days`;
+  return `on ${dateStr}`;
+}
 
 const UnlimitedBadge: React.FC = () => (
   <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-google-blue/10 border border-google-blue/30">

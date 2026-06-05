@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Mail, Lock, ArrowRight, ShieldCheck, Sparkles, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Button } from "./Button";
 import { signIn, signUp, sendReset, validatePassword, validateEmailFormat } from "../services/authService";
+import { TermsModal, type LegalDocKind } from "./TermsModal";
 
 type View = "landing" | "signup" | "signin" | "forgot";
 
@@ -27,6 +28,9 @@ export const Auth: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
+  const [legalModal, setLegalModal] = useState<LegalDocKind | null>(null);
 
   const clearForm = () => {
     setEmail("");
@@ -34,6 +38,8 @@ export const Auth: React.FC = () => {
     setConfirmPassword("");
     setError(null);
     setResetSent(false);
+    setAcceptedTerms(false);
+    setAcceptedPrivacy(false);
   };
 
   const switchView = (v: View) => {
@@ -133,11 +139,11 @@ export const Auth: React.FC = () => {
 
       <div className="relative w-full max-w-xl px-6 animate-fade">
         <div className="text-center mb-12">
-          <h1 className="text-6xl font-serif italic tracking-tighter text-google-dark mb-4">
-            PRHOMZ <span className="text-google-blue not-italic font-sans font-black">AI</span>
+          <h1 className="text-3xl md:text-4xl font-serif italic tracking-tighter text-google-dark mb-4 whitespace-nowrap">
+            PRHOMZ <span className="text-google-blue not-italic font-sans font-black">AI DESIGNER</span>
           </h1>
           <p className="text-google-gray text-sm font-bold uppercase tracking-[0.4em] opacity-80">
-            Inspiring Homes, Enriching Lives
+            Decor Design Delivered
           </p>
         </div>
 
@@ -193,13 +199,30 @@ export const Auth: React.FC = () => {
               <PasswordField password={password} setPassword={setPassword} autoComplete="new-password" />
               <PasswordField password={confirmPassword} setPassword={setConfirmPassword} placeholder="Confirm password" autoComplete="new-password" />
 
+              <div className="space-y-3 pt-1">
+                <LegalCheckbox
+                  id="accept-terms"
+                  checked={acceptedTerms}
+                  onChange={setAcceptedTerms}
+                  linkLabel="Terms & Conditions"
+                  onLinkClick={() => setLegalModal("terms")}
+                />
+                <LegalCheckbox
+                  id="accept-privacy"
+                  checked={acceptedPrivacy}
+                  onChange={setAcceptedPrivacy}
+                  linkLabel="Privacy Policy"
+                  onLinkClick={() => setLegalModal("privacy")}
+                />
+              </div>
+
               {errorBlock}
 
               <Button
                 type="submit"
                 isLoading={isLoading}
                 className="w-full py-5 rounded-2xl text-base shadow-xl"
-                disabled={!email || !password || !confirmPassword}
+                disabled={!email || !password || !confirmPassword || !acceptedTerms || !acceptedPrivacy}
               >
                 {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
@@ -298,9 +321,11 @@ export const Auth: React.FC = () => {
         </div>
 
         <p className="mt-10 text-center text-xs text-google-gray font-bold uppercase tracking-[0.2em] opacity-40">
-          PRHOMZ Systems • Terms of Design apply
+          PRHOMZ Inc • Terms of Design apply
         </p>
       </div>
+
+      {legalModal && <TermsModal kind={legalModal} onClose={() => setLegalModal(null)} />}
     </div>
   );
 };
@@ -351,4 +376,38 @@ const PasswordField: React.FC<FieldProps> = ({
       className="w-full bg-google-bg border border-google-border rounded-2xl py-5 pl-16 pr-8 text-base focus:ring-2 focus:ring-google-blue focus:outline-none focus:border-google-blue transition-all text-google-dark placeholder-google-gray shadow-inner"
     />
   </div>
+);
+
+interface LegalCheckboxProps {
+  id: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  linkLabel: string;
+  onLinkClick: () => void;
+}
+
+const LegalCheckbox: React.FC<LegalCheckboxProps> = ({ id, checked, onChange, linkLabel, onLinkClick }) => (
+  <label htmlFor={id} className="flex items-start space-x-3 cursor-pointer select-none">
+    <input
+      id={id}
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      className="mt-1 w-4 h-4 rounded border-google-border text-google-blue focus:ring-google-blue focus:ring-offset-0 cursor-pointer"
+    />
+    <span className="text-xs text-google-gray leading-snug">
+      I agree to the{" "}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          onLinkClick();
+        }}
+        className="text-google-blue font-bold hover:underline focus:outline-none focus:underline"
+      >
+        {linkLabel}
+      </button>
+      .
+    </span>
+  </label>
 );

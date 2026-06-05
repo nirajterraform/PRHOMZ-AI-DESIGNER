@@ -1,6 +1,6 @@
 import * as admin from "firebase-admin";
 import StripeSDK from "stripe";
-import type { UserTier } from "./_shared/tiers";
+import { startOfNextMonthUTC, type UserTier } from "./_shared/tiers";
 import { recomputeExpiry } from "./lib/recomputeExpiry";
 import { getTierFromPriceId, USE_MOCK_STRIPE } from "./_shared/pricing";
 
@@ -269,13 +269,38 @@ interface TierUpdate {
 
 async function applyTierChange(uid: string, update: TierUpdate): Promise<void> {
   const userRef = admin.firestore().doc(`users/${uid}`);
-  await userRef.update({
+
+  // Read existing state to decide whether the billing period rolled (or this
+  // is the initial subscription). If yes, reset monthly count and align
+  // monthlyResetAt to the new Stripe period end. If the same period (e.g.
+  // plan change mid-cycle), leave count alone.
+  const snap = await userRef.get();
+  const existing = (snap.data() as Record<string, unknown> | undefined) || {};
+  const existingPeriodEnd = (existing.currentPeriodEnd as number | null) || null;
+  const periodChanged = update.currentPeriodEnd !== existingPeriodEnd;
+
+  const patch: Record<string, unknown> = {
     tier: update.tier,
     subscriptionId: update.subscriptionId,
     subscriptionStatus: update.subscriptionStatus,
     currentPeriodEnd: update.currentPeriodEnd,
     lastActive: Date.now(),
-  });
+  };
+
+  if (periodChanged) {
+    // Align quota reset to billing period for paid tiers; fall back to
+    // calendar-month for freemium (e.g. on cancellation).
+    if (update.tier !== "freemium" && update.currentPeriodEnd && update.currentPeriodEnd > Date.now()) {
+      patch.monthlyResetAt = update.currentPeriodEnd;
+    } else {
+      patch.monthlyResetAt = startOfNextMonthUTC();
+    }
+    // Fresh billing period → fresh render allotment.
+    patch.monthlyDesignCount = 0;
+    patch.renderTimestamps = [];
+  }
+
+  await userRef.update(patch);
   const count = await recomputeExpiry(uid, update.tier);
   console.log(
     JSON.stringify({
@@ -284,6 +309,8 @@ async function applyTierChange(uid: string, update: TierUpdate): Promise<void> {
       uid,
       tier: update.tier,
       status: update.subscriptionStatus,
+      periodChanged,
+      newPeriodEnd: update.currentPeriodEnd,
       galleryDocsUpdated: count,
     }),
   );

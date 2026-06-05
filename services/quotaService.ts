@@ -32,6 +32,22 @@ export function getMonthlyLimit(tier: UserTier): number {
   return QUOTA_BY_TIER[tier].monthly;
 }
 
+/**
+ * Returns the epoch-ms timestamp at which this user's monthly quota next
+ * resets. Mirrors the backend `nextResetAt`:
+ *   - Paid tier with a future `currentPeriodEnd` → align to billing period.
+ *   - Otherwise → fall back to the doc's `monthlyResetAt` (calendar-month for
+ *     freemium, kept fresh server-side).
+ */
+export function getMonthlyResetAt(user: UserAccount | null): number | null {
+  if (!user) return null;
+  const now = Date.now();
+  if (user.tier !== "freemium" && user.currentPeriodEnd && user.currentPeriodEnd > now) {
+    return user.currentPeriodEnd;
+  }
+  return user.monthlyResetAt || null;
+}
+
 function severityFor(percentUsed: number, isExhausted: boolean): QuotaSeverity {
   if (isExhausted) return "exhausted";
   if (percentUsed >= 75) return "critical";

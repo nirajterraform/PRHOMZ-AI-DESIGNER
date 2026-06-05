@@ -11,7 +11,8 @@ import { MockCheckout } from './components/MockCheckout';
 import { MockPortal } from './components/MockPortal';
 import { UpgradeSuccess } from './components/UpgradeSuccess';
 import { AppMode, GeneratedImage, UserAccount, ProductItem } from './types';
-import { Search, HelpCircle, Settings, Grid, X, Loader2, ShoppingCart, LogOut, Crown, AlertTriangle, CalendarClock } from 'lucide-react';
+import { Search, HelpCircle, Settings, Grid, X, Loader2, ShoppingCart, LogOut, Crown, AlertTriangle, CalendarClock, MessageSquare } from 'lucide-react';
+import { FeedbackModal } from './components/FeedbackModal';
 import { searchCatalog } from './services/geminiService';
 import { onAuthChange, signOut } from './services/authService';
 import { subscribeToUser } from './services/userService';
@@ -38,6 +39,7 @@ function MainApp() {
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [activeEditImage, setActiveEditImage] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -333,6 +335,13 @@ function MainApp() {
                     <p className="px-4 py-2 text-[10px] text-red-400 leading-snug">{portalError}</p>
                   )}
                   <button
+                    onClick={() => { setIsProfileOpen(false); setIsFeedbackOpen(true); }}
+                    className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold text-google-dark hover:bg-google-bg rounded-xl transition-colors"
+                  >
+                    <MessageSquare size={16} className="text-google-blue" />
+                    <span>Send feedback</span>
+                  </button>
+                  <button
                     onClick={handleLogout}
                     className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold text-red-400 hover:bg-red-400/10 rounded-xl transition-colors"
                   >
@@ -453,6 +462,10 @@ function MainApp() {
 
         <div className="flex-1 overflow-y-auto p-6 md:p-12 lg:p-16 custom-scrollbar">{renderContent()}</div>
       </main>
+
+      {isFeedbackOpen && userDoc && (
+        <FeedbackModal user={userDoc} onClose={() => setIsFeedbackOpen(false)} />
+      )}
     </div>
   );
 }

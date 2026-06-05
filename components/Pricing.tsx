@@ -54,7 +54,7 @@ export const Pricing: React.FC<PricingProps> = ({ currentTier, subscriptionStatu
       <header className="mb-16 text-center">
         <div className="inline-flex items-center space-x-2 mb-4 text-google-blue">
           <Crown size={16} />
-          <span className="text-[10px] font-bold uppercase tracking-[0.3em]">PRHOMZ Membership</span>
+          <span className="text-base font-bold uppercase tracking-[0.3em]">PRHOMZ Membership</span>
         </div>
         <h2 className="text-4xl md:text-5xl font-semibold text-google-dark mb-4">
           Choose your studio tier

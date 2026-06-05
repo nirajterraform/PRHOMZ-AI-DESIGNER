@@ -8,7 +8,8 @@ import {
   type User,
   type Unsubscribe,
 } from "firebase/auth";
-import { auth } from "./firebaseClient";
+import { doc, updateDoc } from "firebase/firestore";
+import { auth, firestore } from "./firebaseClient";
 import { apiPost, ApiClientError } from "./apiClient";
 
 const PASSWORD_MIN_LENGTH = 8;
@@ -46,14 +47,28 @@ export async function signUp(email: string, password: string): Promise<User> {
   // glitch, server cold start), the proxy routes will return `failed-precondition`
   // / `no_user_doc` on first use and the frontend can prompt a retry. Don't
   // fail signup on this.
+  let bootstrapped = false;
   try {
     await apiPost<Record<string, never>, { created: boolean; uid: string }>(
       "/internal/onSignup",
       {},
     );
+    bootstrapped = true;
   } catch (e) {
     if (!(e instanceof ApiClientError)) throw e;
     console.warn("Post-signup bootstrap failed (will be retried on first use):", e);
+  }
+
+  if (bootstrapped) {
+    const now = Date.now();
+    try {
+      await updateDoc(doc(firestore, `users/${credential.user.uid}`), {
+        acceptedTermsAt: now,
+        acceptedPrivacyAt: now,
+      });
+    } catch (e) {
+      console.warn("Failed to persist T&C / Privacy acceptance timestamps:", e);
+    }
   }
 
   return credential.user;

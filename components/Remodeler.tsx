@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Download, ShoppingBag, Plus, ImageIcon, Wand2, ShieldCheck, RefreshCcw, Layout, Star, Clock, Zap } from 'lucide-react';
+import { Download, ShoppingBag, Plus, ImageIcon, Wand2, RefreshCcw, Layout, Star, Clock, Zap } from 'lucide-react';
 import { remodelImage } from '../services/geminiService';
 import { saveProductsToImage } from '../services/galleryService';
 import { downloadImage } from '../services/downloadImage';
@@ -8,6 +8,7 @@ import { GeneratedImage, DESIGN_PRESETS, UserAccount } from '../types';
 import { Button } from './Button';
 import { ShopLookModal } from './ShopLookModal';
 import { QuotaBadge } from './QuotaBadge';
+import { FeedbackForm } from './FeedbackForm';
 import { PreRenderWarningModal } from './PreRenderWarningModal';
 import { QuotaExceededModal, type QuotaExceededReason } from './QuotaExceededModal';
 import {
@@ -43,6 +44,14 @@ export const Remodeler: React.FC<RemodelerProps> = ({
   const [isShopOpen, setIsShopOpen] = useState(false);
   const [generationTime, setGenerationTime] = useState<number | null>(null);
   const [activeTimer, setActiveTimer] = useState<number>(0);
+  const [feedbackDismissed, setFeedbackDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.sessionStorage.getItem('feedback-dismissed') === '1';
+  });
+  const dismissFeedback = () => {
+    try { window.sessionStorage.setItem('feedback-dismissed', '1'); } catch { /* ignore */ }
+    setFeedbackDismissed(true);
+  };
   const [warningOpen, setWarningOpen] = useState(false);
   const [exceededInfo, setExceededInfo] = useState<{
     reason: QuotaExceededReason;
@@ -221,12 +230,8 @@ export const Remodeler: React.FC<RemodelerProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto animate-fade">
-      <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <header className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-2 mb-2">
-            <ShieldCheck size={18} className="text-google-blue" />
-            <span className="text-xs font-bold text-google-blue uppercase tracking-widest">Industry Specific Engine</span>
-          </div>
           <h2 className="text-3xl font-semibold text-google-dark mb-2">
             {initialImage ? 'Refine Iteration' : 'Remodel your Space'}
           </h2>
@@ -244,7 +249,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({
       </header>
 
       {currentUser && (
-        <div className="mb-8">
+        <div className="mb-4">
           <QuotaBadge user={currentUser} onUpgradeClick={onNavigateToPricing} />
         </div>
       )}
@@ -411,6 +416,15 @@ export const Remodeler: React.FC<RemodelerProps> = ({
               </div>
             )}
           </div>
+          {resultImage && currentUser && !feedbackDismissed && (
+            <FeedbackForm
+              user={currentUser}
+              context="remodel-result"
+              imageId={lastUploadedImageId}
+              onSubmitted={dismissFeedback}
+              onDismiss={dismissFeedback}
+            />
+          )}
         </div>
       </div>
 

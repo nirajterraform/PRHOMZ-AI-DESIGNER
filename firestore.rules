@@ -42,6 +42,19 @@ service cloud.firestore {
       }
     }
 
+    // User feedback: authenticated users can submit their own feedback docs.
+    // Reads/updates/deletes are server-only (admin reviews via Firestore console).
+    match /feedback/{feedbackId} {
+      allow read, update, delete: if false;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() <= 2000;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

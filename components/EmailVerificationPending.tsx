@@ -138,7 +138,7 @@ export const EmailVerificationPending: React.FC<EmailVerificationPendingProps> =
         </div>
 
         <p className="mt-8 text-center text-xs text-google-gray font-bold uppercase tracking-[0.2em] opacity-40">
-          PRHOMZ Systems • Secure passwordless verification
+          PRHOMZ Inc • Secure passwordless verification
         </p>
       </div>
     </div>
