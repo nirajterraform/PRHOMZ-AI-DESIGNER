@@ -6,6 +6,7 @@ import { requireOidc } from "./middleware/oidc";
 import { ApiError } from "./lib/apiError";
 import { handleProxyGenerateImage } from "./proxyGenerateImage";
 import { handleProxyRemodel } from "./proxyRemodel";
+import { handleDeleteAccount } from "./deleteAccount";
 import { handleProxyChat } from "./proxyChat";
 import { handleProxyGenerateProductList } from "./proxyGenerateProductList";
 import { handleProxySwapProduct } from "./proxySwapProduct";
@@ -97,6 +98,16 @@ app.post(
   requireAuth,
   requireVerifiedEmail,
   wrap((req) => handleProxyCreateCustomerPortalSession(req.user!.uid, req.body)),
+);
+
+// Soft-deletes the calling user's account: cancels Stripe subscription,
+// anonymizes feedback, marks deletedAt + hardDeleteAt, disables Auth user.
+// Frontend signs out immediately on success.
+app.post(
+  "/deleteAccount",
+  requireAuth,
+  requireVerifiedEmail,
+  wrap((req) => handleDeleteAccount(req.user!.uid)),
 );
 
 // --- Internal routes ---

@@ -11,8 +11,9 @@ import { MockCheckout } from './components/MockCheckout';
 import { MockPortal } from './components/MockPortal';
 import { UpgradeSuccess } from './components/UpgradeSuccess';
 import { AppMode, GeneratedImage, UserAccount, ProductItem } from './types';
-import { Search, HelpCircle, Settings, Grid, X, Loader2, ShoppingCart, LogOut, Crown, AlertTriangle, CalendarClock, MessageSquare } from 'lucide-react';
+import { Search, HelpCircle, Settings, Grid, X, Loader2, ShoppingCart, LogOut, Crown, AlertTriangle, CalendarClock, MessageSquare, Trash2 } from 'lucide-react';
 import { FeedbackModal } from './components/FeedbackModal';
+import { DeleteAccountModal } from './components/DeleteAccountModal';
 import { searchCatalog } from './services/geminiService';
 import { onAuthChange, signOut } from './services/authService';
 import { subscribeToUser } from './services/userService';
@@ -40,6 +41,7 @@ function MainApp() {
   const [activeEditImage, setActiveEditImage] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -76,6 +78,15 @@ function MainApp() {
     const unsubscribe = subscribeToUser(authUser.uid, setUserDoc);
     return () => unsubscribe();
   }, [authUser]);
+
+  // Safety net: if a still-valid session somehow lands on a soft-deleted user
+  // doc, sign out immediately. (Normal flow signs out inside deleteAccount();
+  // this catches the edge case of a delete happening on another device.)
+  useEffect(() => {
+    if (userDoc?.deletedAt) {
+      signOut();
+    }
+  }, [userDoc?.deletedAt]);
 
   // Gallery now subscribes to Firestore (Phase 2). LocalStorage is no longer read or written.
   const [isGalleryLoading, setIsGalleryLoading] = useState(true);
@@ -348,6 +359,14 @@ function MainApp() {
                     <LogOut size={16} />
                     <span>Logout</span>
                   </button>
+                  <div className="border-t border-google-border my-1" />
+                  <button
+                    onClick={() => { setIsProfileOpen(false); setIsDeleteAccountOpen(true); }}
+                    className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-semibold text-red-400 hover:bg-red-400/10 rounded-xl transition-colors"
+                  >
+                    <Trash2 size={16} />
+                    <span>Delete my account</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -465,6 +484,19 @@ function MainApp() {
 
       {isFeedbackOpen && userDoc && (
         <FeedbackModal user={userDoc} onClose={() => setIsFeedbackOpen(false)} />
+      )}
+
+      {isDeleteAccountOpen && userDoc && (
+        <DeleteAccountModal
+          user={userDoc}
+          galleryCount={generatedImages.length}
+          onClose={() => setIsDeleteAccountOpen(false)}
+          onDeleted={() => {
+            setIsDeleteAccountOpen(false);
+            // authService.deleteAccount() already calls signOut() — the auth
+            // listener will route the app back to the landing screen.
+          }}
+        />
       )}
     </div>
   );

@@ -92,6 +92,28 @@ export async function sendReset(email: string): Promise<void> {
   await sendPasswordResetEmail(auth, email);
 }
 
+export interface DeleteAccountResult {
+  deleted: boolean;
+  uid: string;
+  hardDeleteAt: number;
+}
+
+/**
+ * Soft-delete the current user's account.
+ *
+ * Backend cancels Stripe, anonymizes feedback, marks deletedAt + hardDeleteAt
+ * on the user doc, and disables the Auth record. We then sign the user out
+ * locally so the session ends immediately.
+ */
+export async function deleteAccount(): Promise<DeleteAccountResult> {
+  const result = await apiPost<Record<string, never>, DeleteAccountResult>(
+    "/deleteAccount",
+    {},
+  );
+  await fbSignOut(auth);
+  return result;
+}
+
 export function onAuthChange(callback: (user: User | null) => void): Unsubscribe {
   return onAuthStateChanged(auth, callback);
 }

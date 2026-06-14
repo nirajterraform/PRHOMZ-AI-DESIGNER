@@ -34,7 +34,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({ kind, onClose }) => {
         </div>
         <div className="flex-1 overflow-y-auto p-6 md:p-8 text-sm text-google-dark leading-relaxed space-y-5 custom-scrollbar">
           <p className="text-[10px] uppercase tracking-widest text-google-gray font-bold">
-            Last updated: {new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })} · Placeholder content — to be replaced with final legal copy.
+            Last updated: {new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
           </p>
           {body.map((section, idx) => (
             <section key={idx} className="space-y-2">
@@ -111,7 +111,7 @@ const TERMS_BODY: Section[] = [
   {
     heading: "8. Contact",
     paragraphs: [
-      "Questions about these terms can be sent to legal@prhomz.example. (Replace with final contact address.)",
+      "Questions about these terms can be sent to support@prhomz.com.",
     ],
   },
 ];
@@ -168,7 +168,7 @@ const PRIVACY_BODY: Section[] = [
   {
     heading: "9. Contact",
     paragraphs: [
-      "Privacy questions can be sent to privacy@prhomz.example. (Replace with final contact address.)",
+      "Privacy questions can be sent to support@prhomz.com.",
     ],
   },
 ];
