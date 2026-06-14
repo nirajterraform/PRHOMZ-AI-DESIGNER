@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { X, ShoppingBag, Loader2, RefreshCw, Package, ExternalLink, Zap, Bookmark, Scan, ShieldCheck, BadgeCheck, CheckCircle2, Clock, Search, Globe, Layout, ChevronRight } from 'lucide-react';
+import { X, ShoppingBag, Loader2, RefreshCw, Package, ExternalLink, Zap, Bookmark, Scan, ShieldCheck, BadgeCheck, CheckCircle2, Clock, Search, Globe, ChevronRight } from 'lucide-react';
 import { ProductItem, ProductSource } from '../types';
 import { generateProductList, swapProduct } from '../services/geminiService';
 import { Button } from './Button';
@@ -143,23 +143,21 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
         </button>
 
         {!source ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-12 overflow-y-auto">
+          <div className="flex-1 flex flex-col items-center justify-start p-8 md:p-12 text-center space-y-8 md:space-y-10 overflow-y-auto">
             <div className="space-y-4">
               <div className="flex items-center justify-center space-x-2 text-google-blue mb-4">
                 <Globe size={32} className="animate-pulse" />
-                <h2 className="text-4xl font-serif italic tracking-tighter">Sourcing <span className="not-italic font-sans font-black">NEXUS</span></h2>
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Choose where you'd like to shop</h2>
               </div>
-              <p className="text-google-gray text-lg max-w-lg mx-auto leading-relaxed">
-                Before we scan your space, select the inventory node you wish to source from. Our AI will strictly bias findings to your selection.
+              <p className="text-google-gray text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
+                Select a marketplace, brand, or affiliate partner to begin. Our AI will personalize product discovery and optimize recommendations by prioritizing relevant products from your chosen shopping source, helping you find the best fit to match your Style.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
               {[
-                { id: 'PRHOMZ', label: 'PRHOMZ Atelier', desc: 'Direct partner nodes & artisan collections.', icon: ShieldCheck, accent: 'google-blue' },
-                { id: 'Wayfair', label: 'Wayfair Professional', desc: 'Expansive trade catalog with competitive rates.', icon: Layout, accent: 'indigo-400' },
-                { id: 'Amazon', label: 'Amazon Home', desc: 'Global scale with expedited sourcing options.', icon: ShoppingBag, accent: 'orange-400' },
-                { id: 'IKEA', label: 'IKEA Global', desc: 'Modern democratic design and modular sets.', icon: Package, accent: 'blue-400' }
+                { id: 'PRHOMZ', label: 'PRHOMZ', desc: 'Direct partner nodes & artisan collections.', icon: ShieldCheck, accent: 'google-blue' },
+                { id: 'Amazon', label: 'Amazon', desc: 'Vast marketplace selection with fast, reliable delivery.', icon: ShoppingBag, accent: 'orange-400' }
               ].map((nexus) => (
                 <button
                   key={nexus.id}
@@ -175,7 +173,7 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
                         <nexus.icon size={24} />
                       </div>
                       <h4 className="text-xl font-bold text-google-dark mb-2">{nexus.label}</h4>
-                      <p className="text-sm text-google-gray leading-relaxed pr-8">{nexus.desc}</p>
+                      {nexus.desc && <p className="text-sm text-google-gray leading-relaxed pr-8">{nexus.desc}</p>}
                     </div>
                     <div className="mt-8 flex items-center text-google-blue text-xs font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0">
                       Initialize Link <ChevronRight size={14} className="ml-1" />
@@ -185,7 +183,6 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
               ))}
             </div>
             
-            <p className="text-[10px] font-bold text-google-gray uppercase tracking-[0.4em] opacity-40">Secured via PRHOMZ Enterprise Relay</p>
           </div>
         ) : (
           <>
@@ -193,19 +190,17 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
               <div className="space-y-6">
                 <div className="flex items-center space-x-2 text-google-blue">
                    <ShieldCheck size={20} />
-                   <h3 className="text-2xl font-bold uppercase tracking-tight">PRHOMZ SYNC</h3>
+                   <h3 className="text-2xl font-bold uppercase tracking-tight">PRHOMZ AI DESIGNER</h3>
                 </div>
                 <div className="p-4 bg-google-bg/50 border border-google-border rounded-2xl space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-google-gray">Selected Nexus</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-google-gray">Selected Source of Shopping</span>
                   <div className="flex items-center space-x-2 text-google-blue">
                     <Globe size={14} />
-                    <span className="font-bold">{source} Catalog</span>
+                    <span className="font-bold">{source}</span>
                   </div>
                 </div>
                 <p className="text-sm text-google-gray leading-relaxed">
-                  Every artifact detected is matched against the <b>{source} Catalog</b> to ensure source-accurate pricing.
-                  <br/><br/>
-                  <b>Budget Threshold:</b> ${budget?.toLocaleString()}
+                  Every artifact detected is matched against the <b>{source} Catalog</b> to ensure source-approximate pricing.
                 </p>
                 {budget !== undefined && (
                   <div className="pt-6 border-t border-google-border">
@@ -242,7 +237,7 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
                   <div className="flex items-center space-x-3 mt-2">
                     <div className="flex items-center space-x-2 px-3 py-1 rounded-lg bg-google-lightBlue text-google-blue border border-google-blue/20">
                       <BadgeCheck size={14} />
-                      <span className="text-xs font-bold uppercase tracking-tight">Direct Source Pricing</span>
+                      <span className="text-xs font-bold uppercase tracking-tight">Approx Source Pricing</span>
                     </div>
                     {analysisTime !== null && (
                       <div className="flex items-center space-x-2 px-3 py-1 rounded-lg bg-google-surface text-google-gray border border-google-border animate-in fade-in slide-in-from-top-2 duration-500">
@@ -352,15 +347,15 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
                         <span className="text-xs font-bold text-google-gray uppercase tracking-widest">Curation Total</span>
                         <div className="flex items-center space-x-1 px-2 py-0.5 bg-green-400/10 text-green-400 rounded-md border border-green-400/10">
                           <Zap size={10} />
-                          <span className="text-[10px] font-black uppercase">Verified {source} Prices</span>
+                          <span className="text-[10px] font-black uppercase">Predicted {source} Prices</span>
                         </div>
                       </div>
                       <span className="text-3xl font-black text-google-dark">${currentTotal.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center space-x-4">
                        <p className="text-xs text-google-gray font-medium max-w-[200px] text-right hidden lg:block leading-tight">
-                         Spatial Sync Intensity: {((analysisTime || 1) * 12).toFixed(0)} MHz <br/>
-                         Synced across {source} API nodes.
+                         AI-matched estimates from current {source} listings. <br/>
+                         Confirm final price on the source.
                        </p>
                        <Button 
                         variant={isSaved ? "ghost" : "secondary"} 

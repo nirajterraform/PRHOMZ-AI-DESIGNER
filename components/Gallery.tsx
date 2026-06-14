@@ -7,6 +7,10 @@ import { ExpiryChip } from './ExpiryChip';
 import { RETENTION_DAYS_BY_TIER } from '../services/galleryService';
 import { applySlotCap } from '../services/gallerySlotsService';
 import { downloadImage } from '../services/downloadImage';
+import { saveProductsToImage } from '../services/galleryService';
+import { auth } from '../services/firebaseClient';
+import { ShopLookModal } from './ShopLookModal';
+import { ImageLightbox } from './ImageLightbox';
 
 interface GalleryProps {
   images: GeneratedImage[];
@@ -25,6 +29,16 @@ const TIER_LABEL: Record<UserTier, string> = {
 
 export const Gallery: React.FC<GalleryProps> = ({ images, onEdit, tier, isLoading, onNavigateToPricing }) => {
   const [viewingProducts, setViewingProducts] = useState<GeneratedImage | null>(null);
+  const [shoppingImage, setShoppingImage] = useState<GeneratedImage | null>(null);
+  const [zoomImage, setZoomImage] = useState<GeneratedImage | null>(null);
+
+  const handleShopFurnishings = (img: GeneratedImage) => {
+    if (img.savedProducts && img.savedProducts.length > 0) {
+      setViewingProducts(img);
+    } else {
+      setShoppingImage(img);
+    }
+  };
 
   const handleSourcingAction = (item: ProductItem) => {
     if (item.productUrl) window.open(item.productUrl, '_blank');
@@ -158,7 +172,7 @@ export const Gallery: React.FC<GalleryProps> = ({ images, onEdit, tier, isLoadin
                 alt={img.prompt}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90"
               />
-              <div className="absolute inset-0 bg-google-bg/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4">
+              <div className="absolute inset-0 bg-google-bg/40 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-3">
                 <button
                   onClick={() => onEdit(img.url)}
                   className="p-3 bg-google-blue text-google-bg rounded-full hover:brightness-110 transition-all shadow-lg flex items-center justify-center"
@@ -168,8 +182,24 @@ export const Gallery: React.FC<GalleryProps> = ({ images, onEdit, tier, isLoadin
                 </button>
                 <button
                   type="button"
+                  onClick={() => handleShopFurnishings(img)}
+                  className="p-3 bg-google-dark text-google-bg rounded-full hover:bg-google-blue transition-all shadow-lg"
+                  title="Shop Furnishings"
+                >
+                  <ShoppingBag size={20} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoomImage(img)}
+                  className="p-3 bg-google-surface text-google-dark rounded-full hover:bg-white transition-all shadow-lg border border-google-border"
+                  title="Zoom In"
+                >
+                  <Maximize2 size={20} />
+                </button>
+                <button
+                  type="button"
                   onClick={() => downloadImage(img.url, `prhomz-${img.id}.png`)}
-                  className="p-3 bg-google-dark text-google-bg rounded-full hover:bg-white transition-all shadow-lg"
+                  className="p-3 bg-google-dark text-google-bg rounded-full hover:bg-white hover:text-google-dark transition-all shadow-lg"
                   title={img.watermarked ? 'Freemium exports will include a watermark — upgrade to remove' : 'Download'}
                 >
                   <Download size={20} />
@@ -404,6 +434,34 @@ export const Gallery: React.FC<GalleryProps> = ({ images, onEdit, tier, isLoadin
             </div>
           </div>
         </div>
+      )}
+
+      {shoppingImage && (
+        <ShopLookModal
+          image={shoppingImage.url}
+          isOpen={!!shoppingImage}
+          budget={5000}
+          onClose={() => setShoppingImage(null)}
+          onSaveProducts={async (products) => {
+            const uid = auth.currentUser?.uid;
+            if (uid) {
+              try {
+                await saveProductsToImage(uid, shoppingImage.id, products);
+              } catch (e) {
+                console.warn("Failed to persist sourced products:", e);
+              }
+            }
+            setShoppingImage(null);
+          }}
+        />
+      )}
+
+      {zoomImage && (
+        <ImageLightbox
+          url={zoomImage.url}
+          alt={zoomImage.prompt}
+          onClose={() => setZoomImage(null)}
+        />
       )}
     </div>
   );
