@@ -149,7 +149,7 @@ export const Generator: React.FC<GeneratorProps> = ({ onImageGenerated }) => {
             {currentImage ? (
               <div className="w-full h-full group">
                 <img src={currentImage} alt="Result" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-6">
+                <div className="absolute inset-0 bg-black/60 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-6">
                   <Button onClick={() => setIsShopOpen(true)} className="bg-white text-black px-8 py-3 rounded-none font-bold">Shop the Look</Button>
                   <button onClick={() => downloadImage(currentImage, 'design.png')} className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-none border border-white/20"><Download size={20}/></button>
                 </div>

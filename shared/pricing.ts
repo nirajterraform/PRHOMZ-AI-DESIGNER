@@ -56,6 +56,7 @@ export const TIER_DISPLAY: Record<UserTier, TierDisplay> = {
     retentionDays: 1,
     watermarked: true,
     highlights: [
+      "PRHOMZ AI-powered Design Assistant",
       "10 renders per month",
       "2 renders per day",
       "24-hour gallery retention",
@@ -72,6 +73,7 @@ export const TIER_DISPLAY: Record<UserTier, TierDisplay> = {
     retentionDays: 7,
     watermarked: false,
     highlights: [
+      "PRHOMZ AI-powered Design Assistant",
       "100 renders per month",
       "5 renders per day",
       "7-day gallery retention",
@@ -88,11 +90,11 @@ export const TIER_DISPLAY: Record<UserTier, TierDisplay> = {
     retentionDays: 15,
     watermarked: false,
     highlights: [
+      "PRHOMZ AI-powered Design Assistant",
       "300 renders per month",
       "Unlimited daily renders",
       "15-day gallery retention",
       "No watermark",
-      "Priority Gemini queue",
     ],
   },
   designer: {
@@ -105,11 +107,11 @@ export const TIER_DISPLAY: Record<UserTier, TierDisplay> = {
     retentionDays: 30,
     watermarked: false,
     highlights: [
+      "PRHOMZ AI-powered Design Assistant",
       "Unlimited monthly renders",
       "Unlimited daily renders",
       "30-day gallery retention",
       "No watermark",
-      "Priority Gemini queue",
       "Designer badge on profile",
     ],
   },

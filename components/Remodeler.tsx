@@ -283,7 +283,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({
                 <div className="relative w-full h-full group">
                   <img src={previewUrl} alt="Preview" className="w-full h-full object-cover rounded-lg opacity-90" />
                   {!isQuotaReached && (
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg">
+                    <div className="absolute inset-0 bg-black/40 opacity-100 md:opacity-0 md:group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg">
                       <span className="text-xs font-bold text-white uppercase tracking-widest">Change Photo</span>
                     </div>
                   )}
@@ -374,7 +374,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({
                   </div>
                 </div>
 
-                <div className="absolute inset-0 bg-gradient-to-t from-google-bg/95 to-transparent flex items-center justify-center space-x-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+                <div className="absolute inset-0 bg-gradient-to-t from-google-bg/95 to-transparent flex items-center justify-center space-x-6 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 z-20">
                   <Button onClick={() => setIsShopOpen(true)} className="rounded-full bg-google-dark text-google-bg hover:bg-white border-none px-10 py-4 text-sm font-bold shadow-2xl transition-all hover:scale-105 active:scale-95">
                     <ShoppingBag className="w-5 h-5 mr-2" />
                     Shop Furnishings
