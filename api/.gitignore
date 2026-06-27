@@ -1,4 +1,5 @@
-lib/
+# Build output only (api/lib/). Anchored so it does NOT match api/src/lib/ source.
+/lib/
 node_modules/
 src/_shared/
 .runtimeconfig.json
