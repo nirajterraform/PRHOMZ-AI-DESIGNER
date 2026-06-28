@@ -33,8 +33,6 @@ export async function handleProxySwapProduct(
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new ApiError("internal", "GEMINI_API_KEY not configured.");
-  const shopifyToken = process.env.SHOPIFY_ACCESS_TOKEN;
-  if (!shopifyToken) throw new ApiError("internal", "SHOPIFY_ACCESS_TOKEN not configured.");
 
   const ai = new GoogleGenAI({ apiKey });
   const base64Data = base64Image.split(",")[1] || base64Image;
@@ -80,7 +78,7 @@ export async function handleProxySwapProduct(
     colors: string[];
   };
 
-  const match = await findMatchingInventory(item.name, "PRHOMZ", shopifyToken);
+  const match = findMatchingInventory(item.name, "PRHOMZ");
 
   return {
     product: {

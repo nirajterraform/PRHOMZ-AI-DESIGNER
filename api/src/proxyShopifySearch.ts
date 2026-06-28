@@ -32,8 +32,6 @@ export async function handleProxyShopifySearch(
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new ApiError("internal", "GEMINI_API_KEY not configured.");
-  const shopifyToken = process.env.SHOPIFY_ACCESS_TOKEN;
-  if (!shopifyToken) throw new ApiError("internal", "SHOPIFY_ACCESS_TOKEN not configured.");
 
   const ai = new GoogleGenAI({ apiKey });
 
@@ -79,7 +77,7 @@ export async function handleProxyShopifySearch(
 
   const results: ProductItem[] = await Promise.all(
     aiItems.map(async (item, index) => {
-      const match = await findMatchingInventory(item.name, "PRHOMZ", shopifyToken);
+      const match = findMatchingInventory(item.name, "PRHOMZ");
       return {
         ...item,
         id: `search-${Date.now()}-${index}`,
