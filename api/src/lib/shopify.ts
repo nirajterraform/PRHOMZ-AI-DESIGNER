@@ -28,12 +28,12 @@ export function findMatchingInventory(
   source: ProductSource,
 ): Partial<ShopifyMatch> {
   if (source === "PRHOMZ") {
-    // PRHOMZ has no live inventory feed — "Buy Now" simply sends the user to
-    // the PRHOMZ storefront homepage.
+    // PRHOMZ has no live inventory feed — "Buy Now" sends the user to a
+    // PRHOMZ storefront search for the detected item name (no API/token).
     return {
       name: aiDetectedName,
       shopifyId: "external_prhomz",
-      productUrl: PRHOMZ_URL,
+      productUrl: `${PRHOMZ_URL}/search?q=${encodeURIComponent(aiDetectedName)}`,
       isSynced: false,
     };
   }
