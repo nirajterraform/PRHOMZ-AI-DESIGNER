@@ -1,14 +1,15 @@
 import type { UserTier } from "./tiers";
 
 /**
- * Stripe Price IDs by tier. Real test-mode IDs from the PRHOMZTEST sandbox
- * account. Sourced from the Stripe Dashboard's Product catalog. Each Price is
- * a recurring monthly subscription priced in USD.
+ * Stripe Price IDs by tier. LIVE IDs from the PRHOMZ production Stripe business
+ * account. Sourced from the Stripe Dashboard's Product catalog. Each Price is a
+ * recurring monthly subscription priced in USD (Basic $9.99 / Advanced $19.99 /
+ * Designer $49.99).
  */
 export const STRIPE_PRICE_IDS_BY_TIER: Record<Exclude<UserTier, "freemium">, string> = {
-  basic: "price_1TXKZtQvWrs0iL1QklCqzrEh",
-  advanced: "price_1TXKanQvWrs0iL1QCRgdf30v",
-  designer: "price_1TXKbgQvWrs0iL1QAprPVviL",
+  basic: "price_1TnWBKHQLSQMVgM3PKmSmLeF",
+  advanced: "price_1TnWF9HQLSQMVgM3YuGscFOh",
+  designer: "price_1TnWGKHQLSQMVgM3jQHfgGDS",
 };
 
 /**
