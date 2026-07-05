@@ -309,7 +309,7 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
                             </div>
                             <div className="text-right">
                               <span className="text-xl font-bold text-google-blue block whitespace-nowrap">${item.price.toLocaleString()}</span>
-                              <span className="text-[9px] font-bold uppercase text-google-gray tracking-tighter">Live Price ({source})</span>
+                              <span className="text-[9px] font-bold uppercase text-google-gray tracking-tighter">Est. Price ({source})</span>
                             </div>
                           </div>
 
