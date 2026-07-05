@@ -21,15 +21,21 @@ export class ApiClientError extends Error {
   }
 }
 
-async function getAuthHeader(): Promise<string> {
+async function getAuthHeader(forceRefresh = false): Promise<string> {
   const user = auth.currentUser;
   if (!user) throw new ApiClientError(401, "unauthenticated", "Sign in required.");
-  const token = await user.getIdToken();
+  const token = await user.getIdToken(forceRefresh);
   return `Bearer ${token}`;
 }
 
-export async function apiPost<TIn, TOut>(path: string, body: TIn): Promise<TOut> {
-  const authHeader = await getAuthHeader();
+interface PostResult {
+  status: number;
+  ok: boolean;
+  statusText: string;
+  parsed: unknown;
+}
+
+async function sendPost<TIn>(path: string, body: TIn, authHeader: string): Promise<PostResult> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: {
@@ -49,15 +55,28 @@ export async function apiPost<TIn, TOut>(path: string, body: TIn): Promise<TOut>
     }
   }
 
-  if (!res.ok) {
-    const err = parsed as { error?: string; message?: string; details?: unknown } | null;
+  return { status: res.status, ok: res.ok, statusText: res.statusText, parsed };
+}
+
+export async function apiPost<TIn, TOut>(path: string, body: TIn): Promise<TOut> {
+  let result = await sendPost(path, body, await getAuthHeader());
+
+  // Self-heal for a freshly-verified user: their cached ID token may still
+  // carry email_verified=false. On that specific rejection, force-refresh the
+  // token once and retry so a verified user is never hard-blocked by staleness.
+  if (result.status === 403 && (result.parsed as { error?: string } | null)?.error === "email_not_verified") {
+    result = await sendPost(path, body, await getAuthHeader(true));
+  }
+
+  if (!result.ok) {
+    const err = result.parsed as { error?: string; message?: string; details?: unknown } | null;
     throw new ApiClientError(
-      res.status,
-      err?.error || `http_${res.status}`,
-      err?.message || res.statusText || "Request failed.",
+      result.status,
+      err?.error || `http_${result.status}`,
+      err?.message || result.statusText || "Request failed.",
       err?.details,
     );
   }
 
-  return parsed as TOut;
+  return result.parsed as TOut;
 }

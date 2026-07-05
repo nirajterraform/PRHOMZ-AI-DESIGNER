@@ -66,6 +66,13 @@ function MainApp() {
       setAuthUser(user);
       if (!user) {
         setUserDoc(null);
+      } else if (user.emailVerified) {
+        // Force-refresh the ID token once for a verified user so the backend
+        // sees email_verified=true. Right after verifying, the restored/cached
+        // token can still carry the stale false claim.
+        user.getIdToken(true).catch(() => {
+          // ignore transient refresh errors
+        });
       }
     });
   }, []);

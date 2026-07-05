@@ -24,6 +24,12 @@ export const EmailVerificationPending: React.FC<EmailVerificationPendingProps> =
       if (auth.currentUser && !auth.currentUser.emailVerified) {
         try {
           await auth.currentUser.reload();
+          // Once Firebase confirms verification, force-refresh the ID token so
+          // its email_verified claim updates. Without this the cached token
+          // still says false and the backend keeps rejecting requests.
+          if (auth.currentUser.emailVerified) {
+            await auth.currentUser.getIdToken(true);
+          }
         } catch {
           // ignore transient reload errors
         }
