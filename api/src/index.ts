@@ -1,3 +1,5 @@
+// Must be first: starts OTel auto-instrumentation before express/firestore load.
+import "./tracing";
 import * as admin from "firebase-admin";
 import apiApp from "./apiApp";
 import webhookApp from "./webhookApp";
