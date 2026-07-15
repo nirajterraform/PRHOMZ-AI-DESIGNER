@@ -113,3 +113,72 @@ resource "google_monitoring_alert_policy" "webhook_5xx" {
 # it returns 5xx from /internal/expireOldImages on the api Cloud Run service,
 # which the api_5xx_spike alert above already catches. Re-adding a dedicated
 # scheduler alert later would just produce duplicate pages for the same incident.
+
+# Alert on ANY Stripe webhook signature failure in a 10-min window (7.8).
+# Signature failures return 401 so the 5xx alert never fires on them; a single
+# one warrants a look (secret mismatch after rotation, or a spoof attempt).
+resource "google_monitoring_alert_policy" "webhook_signature_failures" {
+  project      = var.project_id
+  display_name = "stripe-webhook: signature failures (>0 in 10min)"
+  combiner     = "OR"
+  enabled      = true
+
+  conditions {
+    display_name = "signature_failures"
+
+    condition_threshold {
+      filter          = "resource.type = \"cloud_run_revision\" AND metric.type = \"logging.googleapis.com/user/${google_logging_metric.webhook_signature_failure_count.name}\""
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+
+      aggregations {
+        alignment_period   = "600s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channel_ids
+
+  documentation {
+    content   = "One or more Stripe webhook signature verifications failed. If you just rotated the webhook signing secret, redeploy stripe-webhook with the new stripe-webhook-secret version. Otherwise investigate — it may be a spoofing attempt against the public /webhook endpoint."
+    mime_type = "text/markdown"
+  }
+
+  depends_on = [google_logging_metric.webhook_signature_failure_count]
+}
+
+# Alert on a burst of upstream Gemini failures (7.9) — >3 in 5 min points at a
+# quota/429 or Gemini outage, i.e. renders broadly failing, before users pile up.
+resource "google_monitoring_alert_policy" "gemini_failures_burst" {
+  project      = var.project_id
+  display_name = "api: Gemini failures burst (>3 in 5min)"
+  combiner     = "OR"
+  enabled      = true
+
+  conditions {
+    display_name = "gemini_failures"
+
+    condition_threshold {
+      filter          = "resource.type = \"cloud_run_revision\" AND metric.type = \"logging.googleapis.com/user/${google_logging_metric.gemini_call_failed_count.name}\""
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 3
+
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channel_ids
+
+  documentation {
+    content   = "More than 3 Gemini call failures in 5 min. Likely Gemini quota/429 or an upstream outage — image generation is broadly failing. Check the api logs for `gemini_call_failed` error details and the Gemini/Vertex quota dashboard."
+    mime_type = "text/markdown"
+  }
+
+  depends_on = [google_logging_metric.gemini_call_failed_count]
+}

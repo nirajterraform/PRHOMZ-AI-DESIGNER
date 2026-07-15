@@ -17,7 +17,8 @@ resource "google_cloud_run_v2_service" "api" {
     service_account = google_service_account.cloud_run_runtime.email
 
     scaling {
-      min_instance_count = 0
+      # min=1 keeps a warm instance so first-request cold starts don't hurt UX.
+      min_instance_count = 1
       max_instance_count = 10
     }
 
@@ -50,6 +51,12 @@ resource "google_cloud_run_v2_service" "api" {
       # Tighten in prod by setting EXPECTED_OIDC_AUDIENCE to the service URL.
       env {
         name  = "EXPECTED_AUDIENCE_OPTIONAL"
+        value = "true"
+      }
+      # Shop the Look US-only geofence (MaxMind GeoLite2 baked into the image).
+      # Managed here so `terraform apply` doesn't wipe the gcloud-set value.
+      env {
+        name  = "GEOFENCE_ENABLED"
         value = "true"
       }
 
@@ -118,7 +125,9 @@ resource "google_cloud_run_v2_service" "stripe_webhook" {
     service_account = google_service_account.cloud_run_runtime.email
 
     scaling {
-      min_instance_count = 0
+      # min=1 so Stripe webhook deliveries never hit a cold start (a dropped/slow
+      # delivery = subscription state drift). Stripe retries, but keep it warm.
+      min_instance_count = 1
       max_instance_count = 5
     }
 

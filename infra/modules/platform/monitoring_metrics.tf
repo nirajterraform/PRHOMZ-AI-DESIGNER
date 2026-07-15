@@ -55,3 +55,41 @@ resource "google_logging_metric" "checkout_started_count" {
     display_name = "Checkout sessions started"
   }
 }
+
+# Counts Stripe webhook signature-verification failures (7.8). These return 401
+# (not 5xx), so the webhook_5xx alert misses them — a spike means either a
+# secret-rotation mismatch or a spoofing attempt. Alerted on in monitoring_alerts.tf.
+resource "google_logging_metric" "webhook_signature_failure_count" {
+  project = var.project_id
+  name    = "webhook_signature_failure_count"
+  filter  = <<-EOT
+    resource.type = "cloud_run_revision"
+    AND resource.labels.service_name = "stripe-webhook"
+    AND jsonPayload.event = "stripe_webhook_failed"
+    AND jsonPayload.error =~ "signature verification failed"
+  EOT
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "INT64"
+    display_name = "Stripe webhook signature failures"
+  }
+}
+
+# Counts upstream Gemini call failures (7.9). A burst usually means Gemini
+# quota/429 or an outage — i.e. "all renders failing" — so alert early.
+resource "google_logging_metric" "gemini_call_failed_count" {
+  project = var.project_id
+  name    = "gemini_call_failed_count"
+  filter  = <<-EOT
+    resource.type = "cloud_run_revision"
+    AND resource.labels.service_name = "api"
+    AND jsonPayload.event = "gemini_call_failed"
+  EOT
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "INT64"
+    display_name = "Gemini call failures"
+  }
+}
