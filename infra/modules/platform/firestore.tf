@@ -13,3 +13,16 @@ resource "google_firestore_database" "default" {
     google_firebase_project.default,
   ]
 }
+
+# Daily managed Firestore backups with 7-day retention (6.7). Complements PITR
+# (enabled above): PITR covers the last 7 days at minute granularity, while
+# these are restorable daily snapshots.
+resource "google_firestore_backup_schedule" "daily" {
+  project   = var.project_id
+  database  = google_firestore_database.default.name
+  retention = "604800s" # 7 days
+
+  daily_recurrence {}
+
+  depends_on = [google_firestore_database.default]
+}

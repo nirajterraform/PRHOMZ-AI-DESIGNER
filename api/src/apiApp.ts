@@ -17,6 +17,7 @@ import { handleProxyCreateCheckoutSession } from "./proxyCreateCheckoutSession";
 import { handleProxyCreateCustomerPortalSession } from "./proxyCreateCustomerPortalSession";
 import { handleOnSignup } from "./onUserCreate";
 import { handleExpireOldImages } from "./expireOldImages";
+import { handleHardDeleteExpiredAccounts } from "./hardDeleteAccounts";
 import { handleOnGalleryFinalize } from "./onGalleryImageFinalize";
 
 const app = express();
@@ -143,6 +144,14 @@ app.post(
   "/internal/expireOldImages",
   requireOidc,
   wrap(() => handleExpireOldImages()),
+);
+
+// Scheduled cleanup — Cloud Scheduler hits this daily with an OIDC token.
+// Hard-deletes accounts past their 30-day soft-delete grace period.
+app.post(
+  "/internal/hardDeleteExpiredAccounts",
+  requireOidc,
+  wrap(() => handleHardDeleteExpiredAccounts()),
 );
 
 // Eventarc binary-mode delivery for GCS object-finalize on the gallery bucket.

@@ -33,6 +33,8 @@ resource "google_cloud_run_v2_service" "api" {
           memory = "1Gi"
           cpu    = "1"
         }
+        # Faster cold starts (6.4) — extra CPU during container startup.
+        startup_cpu_boost = true
       }
 
       env {
@@ -141,6 +143,8 @@ resource "google_cloud_run_v2_service" "stripe_webhook" {
           memory = "512Mi"
           cpu    = "1"
         }
+        # Faster cold starts (6.4).
+        startup_cpu_boost = true
       }
 
       env {

@@ -93,3 +93,40 @@ resource "google_logging_metric" "gemini_call_failed_count" {
     display_name = "Gemini call failures"
   }
 }
+
+# Business metric: subscriptions created (7.4). Derived from the webhook's
+# stripe_event_received log for customer.subscription.created.
+resource "google_logging_metric" "subscription_created_count" {
+  project = var.project_id
+  name    = "subscription_created_count"
+  filter  = <<-EOT
+    resource.type = "cloud_run_revision"
+    AND resource.labels.service_name = "stripe-webhook"
+    AND jsonPayload.event = "stripe_event_received"
+    AND jsonPayload.type = "customer.subscription.created"
+  EOT
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "INT64"
+    display_name = "Subscriptions created"
+  }
+}
+
+# Business metric: subscriptions cancelled/deleted (7.4).
+resource "google_logging_metric" "subscription_cancelled_count" {
+  project = var.project_id
+  name    = "subscription_cancelled_count"
+  filter  = <<-EOT
+    resource.type = "cloud_run_revision"
+    AND resource.labels.service_name = "stripe-webhook"
+    AND jsonPayload.event = "stripe_event_received"
+    AND jsonPayload.type = "customer.subscription.deleted"
+  EOT
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "INT64"
+    display_name = "Subscriptions cancelled"
+  }
+}
