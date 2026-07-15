@@ -175,14 +175,15 @@ export const Auth: React.FC = () => {
   );
 
   return (
-    <div className="fixed inset-0 z-[100] bg-google-bg flex items-center justify-center overflow-hidden font-sans">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="fixed inset-0 z-[100] bg-google-bg overflow-y-auto font-sans">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-google-blue/10 blur-[120px] rounded-full animate-pulse" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03]" />
       </div>
 
-      <div className="relative w-full max-w-xl px-6 animate-fade">
+      <div className="relative min-h-full flex items-center justify-center py-10 px-6">
+       <div className="w-full max-w-xl animate-fade">
         <div className="text-center mb-12">
           <h1 className="text-3xl md:text-4xl font-serif italic tracking-tighter text-google-dark mb-4 whitespace-nowrap">
             PRHOMZ <span className="text-google-blue not-italic font-sans font-black">AI DESIGNER</span>
@@ -405,6 +406,7 @@ export const Auth: React.FC = () => {
         <p className="mt-10 text-center text-xs text-google-gray font-bold uppercase tracking-[0.2em] opacity-40">
           PRHOMZ Inc • Terms of Design apply
         </p>
+       </div>
       </div>
 
       {legalModal && <TermsModal kind={legalModal} onClose={() => setLegalModal(null)} />}
