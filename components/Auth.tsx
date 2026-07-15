@@ -1,8 +1,29 @@
-import React, { useState } from "react";
-import { Mail, Lock, ArrowRight, ShieldCheck, Sparkles, ArrowLeft, CheckCircle2 } from "lucide-react";
+import React, { useMemo, useRef, useState } from "react";
+import {
+  Mail,
+  Lock,
+  ArrowRight,
+  ShieldCheck,
+  Sparkles,
+  ArrowLeft,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  User,
+  MapPin,
+  Globe,
+  ChevronDown,
+} from "lucide-react";
 import { Button } from "./Button";
 import { signIn, signUp, sendReset, validatePassword, validateEmailFormat } from "../services/authService";
 import { TermsModal, type LegalDocKind } from "./TermsModal";
+import {
+  GENDER_OPTIONS,
+  AGE_RANGE_OPTIONS,
+  COUNTRIES,
+  validateSignupProfile,
+  type SignupProfile,
+} from "../shared/profile";
 
 type View = "landing" | "signup" | "signin" | "forgot";
 
@@ -32,6 +53,13 @@ export const Auth: React.FC = () => {
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [legalModal, setLegalModal] = useState<LegalDocKind | null>(null);
 
+  // Signup profile fields (all mandatory).
+  const [username, setUsername] = useState("");
+  const [gender, setGender] = useState("");
+  const [ageRange, setAgeRange] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [country, setCountry] = useState("");
+
   const clearForm = () => {
     setEmail("");
     setPassword("");
@@ -40,6 +68,11 @@ export const Auth: React.FC = () => {
     setResetSent(false);
     setAcceptedTerms(false);
     setAcceptedPrivacy(false);
+    setUsername("");
+    setGender("");
+    setAgeRange("");
+    setZipCode("");
+    setCountry("");
   };
 
   const switchView = (v: View) => {
@@ -51,6 +84,18 @@ export const Auth: React.FC = () => {
     e.preventDefault();
     setError(null);
 
+    const profile: SignupProfile = {
+      username: username.trim(),
+      gender,
+      ageRange,
+      zipCode: zipCode.trim(),
+      country,
+    };
+    const profileError = validateSignupProfile(profile);
+    if (profileError) {
+      setError(profileError);
+      return;
+    }
     const emailError = validateEmailFormat(email);
     if (emailError) {
       setError(emailError);
@@ -68,7 +113,7 @@ export const Auth: React.FC = () => {
 
     setIsLoading(true);
     try {
-      await signUp(email, password);
+      await signUp(email, password, profile);
       // App.tsx auth listener will route to EmailVerificationPending
     } catch (err) {
       setError(describeAuthError(err));
@@ -192,10 +237,36 @@ export const Auth: React.FC = () => {
             <form onSubmit={handleSignUp} className="space-y-7 animate-in fade-in slide-in-from-right-6 duration-500">
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold text-google-dark">Create your account</h2>
-                <p className="text-sm text-google-gray">8+ characters with at least one number.</p>
+                <p className="text-sm text-google-gray">All fields are required.</p>
               </div>
 
+              <TextField
+                value={username}
+                setValue={setUsername}
+                placeholder="Username"
+                icon={<User size={22} />}
+                autoComplete="username"
+                maxLength={20}
+              />
               <EmailField email={email} setEmail={setEmail} />
+
+              <div className="grid grid-cols-2 gap-4">
+                <SelectField value={gender} setValue={setGender} placeholder="Gender" options={GENDER_OPTIONS} />
+                <SelectField value={ageRange} setValue={setAgeRange} placeholder="Age" options={AGE_RANGE_OPTIONS} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <TextField
+                  value={zipCode}
+                  setValue={setZipCode}
+                  placeholder="Zip / Postal"
+                  icon={<MapPin size={22} />}
+                  autoComplete="postal-code"
+                  maxLength={10}
+                />
+                <CountryField value={country} setValue={setCountry} />
+              </div>
+
               <PasswordField password={password} setPassword={setPassword} autoComplete="new-password" />
               <PasswordField password={confirmPassword} setPassword={setConfirmPassword} placeholder="Confirm password" autoComplete="new-password" />
 
@@ -222,7 +293,18 @@ export const Auth: React.FC = () => {
                 type="submit"
                 isLoading={isLoading}
                 className="w-full py-5 rounded-2xl text-base shadow-xl"
-                disabled={!email || !password || !confirmPassword || !acceptedTerms || !acceptedPrivacy}
+                disabled={
+                  !username ||
+                  !gender ||
+                  !ageRange ||
+                  !zipCode ||
+                  !country ||
+                  !email ||
+                  !password ||
+                  !confirmPassword ||
+                  !acceptedTerms ||
+                  !acceptedPrivacy
+                }
               >
                 {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
@@ -361,22 +443,160 @@ const PasswordField: React.FC<FieldProps> = ({
   setPassword,
   placeholder = "Password",
   autoComplete = "current-password",
-}) => (
+}) => {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative group/input">
+      <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-google-gray group-focus-within/input:text-google-blue transition-colors">
+        <Lock size={22} />
+      </div>
+      <input
+        type={visible ? "text" : "password"}
+        required
+        value={password}
+        onChange={(e) => setPassword?.(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        className="w-full bg-google-bg border border-google-border rounded-2xl py-5 pl-16 pr-14 text-base focus:ring-2 focus:ring-google-blue focus:outline-none focus:border-google-blue transition-all text-google-dark placeholder-google-gray shadow-inner"
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "Hide password" : "Show password"}
+        title={visible ? "Hide password" : "Show password"}
+        className="absolute inset-y-0 right-0 pr-6 flex items-center text-google-gray hover:text-google-blue transition-colors focus:outline-none"
+      >
+        {visible ? <EyeOff size={20} /> : <Eye size={20} />}
+      </button>
+    </div>
+  );
+};
+
+const TextField: React.FC<{
+  value: string;
+  setValue: (v: string) => void;
+  placeholder: string;
+  icon: React.ReactNode;
+  autoComplete?: string;
+  maxLength?: number;
+}> = ({ value, setValue, placeholder, icon, autoComplete, maxLength }) => (
   <div className="relative group/input">
     <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-google-gray group-focus-within/input:text-google-blue transition-colors">
-      <Lock size={22} />
+      {icon}
     </div>
     <input
-      type="password"
+      type="text"
       required
-      value={password}
-      onChange={(e) => setPassword?.(e.target.value)}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
       placeholder={placeholder}
       autoComplete={autoComplete}
-      className="w-full bg-google-bg border border-google-border rounded-2xl py-5 pl-16 pr-8 text-base focus:ring-2 focus:ring-google-blue focus:outline-none focus:border-google-blue transition-all text-google-dark placeholder-google-gray shadow-inner"
+      maxLength={maxLength}
+      className="w-full bg-google-bg border border-google-border rounded-2xl py-5 pl-16 pr-6 text-base focus:ring-2 focus:ring-google-blue focus:outline-none focus:border-google-blue transition-all text-google-dark placeholder-google-gray shadow-inner"
     />
   </div>
 );
+
+const SelectField: React.FC<{
+  value: string;
+  setValue: (v: string) => void;
+  placeholder: string;
+  options: readonly string[];
+}> = ({ value, setValue, placeholder, options }) => (
+  <div className="relative group/input">
+    <select
+      required
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      className={`w-full appearance-none bg-google-bg border border-google-border rounded-2xl py-5 pl-5 pr-11 text-base focus:ring-2 focus:ring-google-blue focus:outline-none focus:border-google-blue transition-all shadow-inner ${
+        value ? "text-google-dark" : "text-google-gray"
+      }`}
+    >
+      <option value="" disabled>
+        {placeholder}
+      </option>
+      {options.map((opt) => (
+        <option key={opt} value={opt} className="text-google-dark">
+          {opt}
+        </option>
+      ))}
+    </select>
+    <div className="absolute inset-y-0 right-0 pr-5 flex items-center pointer-events-none text-google-gray">
+      <ChevronDown size={20} />
+    </div>
+  </div>
+);
+
+// Searchable country field: type-to-filter combobox backed by the ISO list.
+// Only a value present in COUNTRIES counts as selected (server re-validates).
+const CountryField: React.FC<{ value: string; setValue: (v: string) => void }> = ({ value, setValue }) => {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const blurTimer = useRef<number | null>(null);
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return COUNTRIES.slice(0, 60);
+    return COUNTRIES.filter((c) => c.toLowerCase().includes(q)).slice(0, 60);
+  }, [query]);
+
+  // What the input shows: the confirmed selection, unless the user is actively typing.
+  const display = open ? query : value;
+
+  return (
+    <div className="relative group/input">
+      <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-google-gray group-focus-within/input:text-google-blue transition-colors">
+        <Globe size={20} />
+      </div>
+      <input
+        type="text"
+        required
+        value={display}
+        placeholder="Country"
+        autoComplete="off"
+        onFocus={() => {
+          setOpen(true);
+          setQuery("");
+        }}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          if (value) setValue("");
+        }}
+        onBlur={() => {
+          // Delay so an option click registers before we close.
+          blurTimer.current = window.setTimeout(() => setOpen(false), 150);
+        }}
+        className="w-full bg-google-bg border border-google-border rounded-2xl py-5 pr-4 text-base text-google-dark focus:ring-2 focus:ring-google-blue focus:outline-none focus:border-google-blue transition-all placeholder-google-gray shadow-inner"
+        style={{ paddingLeft: "3.25rem" }}
+      />
+      {open && matches.length > 0 && (
+        <ul className="absolute z-50 mt-2 w-full max-h-56 overflow-auto bg-google-surface border border-google-border rounded-2xl shadow-2xl py-2">
+          {matches.map((c) => (
+            <li key={c}>
+              <button
+                type="button"
+                // onMouseDown fires before input blur, so the selection lands.
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setValue(c);
+                  setQuery("");
+                  setOpen(false);
+                  if (blurTimer.current) window.clearTimeout(blurTimer.current);
+                }}
+                className={`w-full text-left px-5 py-2.5 text-sm hover:bg-google-blue/10 transition-colors ${
+                  c === value ? "text-google-blue font-bold" : "text-google-dark"
+                }`}
+              >
+                {c}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
 
 interface LegalCheckboxProps {
   id: string;

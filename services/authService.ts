@@ -11,6 +11,7 @@ import {
 import { doc, updateDoc } from "firebase/firestore";
 import { auth, firestore } from "./firebaseClient";
 import { apiPost, ApiClientError } from "./apiClient";
+import { validateSignupProfile, type SignupProfile } from "../shared/profile";
 
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_NUMBER_REGEX = /\d/;
@@ -36,22 +37,28 @@ export function validateEmailFormat(email: string): string | null {
   return null;
 }
 
-export async function signUp(email: string, password: string): Promise<User> {
+export async function signUp(
+  email: string,
+  password: string,
+  profile: SignupProfile,
+): Promise<User> {
   const policyError = validatePassword(password);
   if (policyError) throw new Error(policyError);
+  const profileError = validateSignupProfile(profile);
+  if (profileError) throw new Error(profileError);
 
   const credential = await createUserWithEmailAndPassword(auth, email, password);
   await sendEmailVerification(credential.user);
 
-  // Best-effort: bootstrap the user doc on the server. If this fails (network
-  // glitch, server cold start), the proxy routes will return `failed-precondition`
-  // / `no_user_doc` on first use and the frontend can prompt a retry. Don't
-  // fail signup on this.
+  // Best-effort: bootstrap the user doc on the server, passing the collected
+  // profile. If this fails (network glitch, server cold start), the proxy routes
+  // will return `failed-precondition` / `no_user_doc` on first use and the
+  // frontend can prompt a retry. Don't fail signup on this.
   let bootstrapped = false;
   try {
-    await apiPost<Record<string, never>, { created: boolean; uid: string }>(
+    await apiPost<{ profile: SignupProfile }, { created: boolean; uid: string }>(
       "/internal/onSignup",
-      {},
+      { profile },
     );
     bootstrapped = true;
   } catch (e) {

@@ -118,7 +118,7 @@ app.post(
 app.post(
   "/internal/onSignup",
   requireAuth,
-  wrap((req) => handleOnSignup(req.user!.uid, req.user!.email)),
+  wrap((req) => handleOnSignup(req.user!.uid, req.user!.email, req.body?.profile)),
 );
 
 // Scheduled sweep — Cloud Scheduler hits this hourly with an OIDC token.

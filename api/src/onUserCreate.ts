@@ -2,6 +2,7 @@ import * as admin from "firebase-admin";
 import Stripe from "stripe";
 import { startOfNextMonthUTC } from "./_shared/tiers";
 import { USE_MOCK_STRIPE } from "./_shared/pricing";
+import { validateSignupProfile, type SignupProfile } from "./_shared/profile";
 import { ApiError } from "./lib/apiError";
 
 export interface OnSignupOutput {
@@ -14,10 +15,19 @@ export interface OnSignupOutput {
  * sign-in if missing). Idempotent — if the user doc already exists, returns
  * created=false without clobbering.
  *
+ * `profile` carries the mandatory signup fields (username, gender, age range,
+ * zip, country). It's validated server-side against the shared rules — never
+ * trust the client. On first-sign-in fallback (no profile), the doc is still
+ * created with best-effort defaults so the user isn't locked out.
+ *
  * Replaces the v1 Firebase Auth `auth.user().onCreate` trigger from the
  * Cloud Functions era.
  */
-export async function handleOnSignup(uid: string, email: string | undefined): Promise<OnSignupOutput> {
+export async function handleOnSignup(
+  uid: string,
+  email: string | undefined,
+  profile?: Partial<SignupProfile>,
+): Promise<OnSignupOutput> {
   if (!uid) throw new ApiError("invalid-argument", "uid required.");
 
   const ref = admin.firestore().doc(`users/${uid}`);
@@ -27,8 +37,26 @@ export async function handleOnSignup(uid: string, email: string | undefined): Pr
   }
 
   const safeEmail = email || "";
-  const name = safeEmail.split("@")[0] || "User";
   const now = Date.now();
+
+  // Validate the profile when supplied. A missing profile is tolerated only for
+  // the legacy first-sign-in bootstrap path; a supplied-but-invalid profile is
+  // rejected so bad data never reaches Firestore.
+  let profileFields: SignupProfile | null = null;
+  if (profile !== undefined) {
+    const profileError = validateSignupProfile(profile);
+    if (profileError) throw new ApiError("invalid-argument", profileError);
+    profileFields = {
+      username: profile.username!.trim(),
+      gender: profile.gender!,
+      ageRange: profile.ageRange!,
+      zipCode: profile.zipCode!.trim(),
+      country: profile.country!,
+    };
+  }
+
+  // Display name: the chosen username when present, else derived from email.
+  const name = profileFields?.username || safeEmail.split("@")[0] || "User";
 
   let stripeCustomerId: string | null = null;
   if (!USE_MOCK_STRIPE) {
@@ -63,6 +91,12 @@ export async function handleOnSignup(uid: string, email: string | undefined): Pr
     id: uid,
     email: safeEmail,
     name,
+    // Profile captured at signup (null on the legacy first-sign-in path).
+    username: profileFields?.username ?? null,
+    gender: profileFields?.gender ?? null,
+    ageRange: profileFields?.ageRange ?? null,
+    zipCode: profileFields?.zipCode ?? null,
+    country: profileFields?.country ?? null,
     role: "Client",
     tier: "freemium",
     stripeCustomerId,
