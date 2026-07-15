@@ -41,10 +41,14 @@ export async function handleProxyRemodel(
     if (quota.reason === "no_user_doc") {
       throw new ApiError("failed-precondition", "User profile not initialized.");
     }
-    const msg =
-      quota.reason === "monthly_exceeded"
-        ? `Monthly limit reached (${quota.monthlyUsed}/${quota.monthlyLimit}). Upgrade for more renders.`
-        : `Daily limit reached (${quota.dailyUsed}/${quota.dailyLimit}). Try again tomorrow or upgrade.`;
+    let msg: string;
+    if (quota.reason === "monthly_exceeded") {
+      msg = `Monthly limit reached (${quota.monthlyUsed}/${quota.monthlyLimit}). Upgrade for more renders.`;
+    } else if (quota.reason === "rate_limited") {
+      msg = "You're generating too quickly. Please wait a moment and try again.";
+    } else {
+      msg = `Daily limit reached (${quota.dailyUsed}/${quota.dailyLimit}). Try again tomorrow or upgrade.`;
+    }
     throw new ApiError("resource-exhausted", msg, { reason: quota.reason });
   }
 

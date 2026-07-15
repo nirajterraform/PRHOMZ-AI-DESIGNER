@@ -2,6 +2,13 @@ import * as admin from "firebase-admin";
 import { QUOTA_BY_TIER, UserTier, startOfNextMonthUTC } from "../_shared/tiers";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
+
+// Anti-abuse burst cap (9.3): max renders any single user may start in a rolling
+// 60s window, on top of the tier monthly/daily quota. Image gen takes ~6s and is
+// sequential in the UI, so a generous cap blocks rapid-fire scripted abuse (each
+// render is real GPU/Gemini cost) without ever hurting legitimate use. Env-tunable.
+const BURST_PER_MINUTE = parseInt(process.env.GEN_BURST_PER_MIN || "10", 10);
 
 /**
  * Computes the next monthly-quota reset moment for a user.
@@ -20,7 +27,7 @@ export function nextResetAt(tier: UserTier, currentPeriodEnd: number, now: numbe
 
 export interface QuotaCheckResult {
   ok: boolean;
-  reason?: "monthly_exceeded" | "daily_exceeded" | "no_user_doc";
+  reason?: "monthly_exceeded" | "daily_exceeded" | "rate_limited" | "no_user_doc";
   monthlyUsed: number;
   monthlyLimit: number;
   dailyUsed: number;
@@ -100,6 +107,21 @@ export async function reserveRenderSlot(
       return {
         ok: false,
         reason: "daily_exceeded" as const,
+        monthlyUsed: monthlyCount,
+        monthlyLimit: quota.monthly,
+        dailyUsed: dailyCount,
+        dailyLimit: quota.daily,
+        tier,
+      };
+    }
+
+    // Anti-abuse burst cap: reject (without consuming quota) if too many renders
+    // were started in the last 60s. Reuses the rolling render timestamps.
+    const lastMinuteCount = trimmedTimestamps.filter((t) => t > now - MINUTE_MS).length;
+    if (lastMinuteCount >= BURST_PER_MINUTE) {
+      return {
+        ok: false,
+        reason: "rate_limited" as const,
         monthlyUsed: monthlyCount,
         monthlyLimit: quota.monthly,
         dailyUsed: dailyCount,
