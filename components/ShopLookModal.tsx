@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, ShoppingBag, Loader2, RefreshCw, Package, ExternalLink, Zap, Bookmark, Scan, ShieldCheck, BadgeCheck, CheckCircle2, Clock, Search, Globe, ChevronRight } from 'lucide-react';
 import { ProductItem, ProductSource } from '../types';
-import { generateProductList, swapProduct } from '../services/geminiService';
+import { generateProductList, swapProduct, REGION_NOT_SUPPORTED } from '../services/geminiService';
+import { ApiClientError } from '../services/apiClient';
 import { Button } from './Button';
 import { SHOPIFY_STORE_URL } from '../services/dataService';
 import { useShopRegion } from '../contexts/GeoContext';
@@ -17,6 +18,7 @@ interface ShopLookModalProps {
 
 export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onClose, budget, onSaveProducts }) => {
   const { shopEnabled } = useShopRegion();
+  const [regionBlocked, setRegionBlocked] = useState(false);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState<ProductSource | null>(null);
@@ -36,6 +38,7 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
       setSwappingIds(new Set());
       setIsSaved(false);
       setAnalysisTime(null);
+      setRegionBlocked(false);
       stopTimer();
     }
   }, [isOpen]);
@@ -75,7 +78,12 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
       setSelections(initialSelections);
     } catch (error) {
       stopTimer();
-      console.error("Failed to load products", error);
+      // Backend region gate — surface the block instead of an empty list.
+      if (error instanceof ApiClientError && error.code === REGION_NOT_SUPPORTED) {
+        setRegionBlocked(true);
+      } else {
+        console.error("Failed to load products", error);
+      }
     } finally {
       setLoading(false);
     }
@@ -133,9 +141,9 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
 
   if (!isOpen) return null;
 
-  // Region gate — Amazon affiliate is US-only. The backend enforces this too;
-  // this just gives non-US users a clear message instead of a source picker.
-  if (!shopEnabled) {
+  // Region gate — Amazon affiliate is US-only. Shown either when /geo told us
+  // up front (shopEnabled=false) or when a proxy call returned 403 (regionBlocked).
+  if (!shopEnabled || regionBlocked) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 overflow-hidden">
         <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={onClose} />

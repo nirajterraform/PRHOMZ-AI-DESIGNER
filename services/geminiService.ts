@@ -1,5 +1,9 @@
-import { apiPost } from "./apiClient";
+import { apiPost, ApiClientError } from "./apiClient";
 import { AspectRatio, ProductItem, ProductSource } from "../types";
+
+// Region gate (Shop the Look is US-only). Callers can catch this to show a
+// clear "not available in your region" message instead of an empty result.
+export const REGION_NOT_SUPPORTED = "region_not_supported";
 
 interface ProxyImageResult {
   imageId: string;
@@ -73,6 +77,9 @@ export const generateProductList = async (
     >("/proxyGenerateProductList", { base64Image, source });
     return result.products;
   } catch (error) {
+    // Let the region block propagate so the UI can message it clearly; all
+    // other failures degrade to an empty list as before.
+    if (error instanceof ApiClientError && error.code === REGION_NOT_SUPPORTED) throw error;
     console.error(error);
     return [];
   }
