@@ -120,13 +120,14 @@ const PRIVACY_BODY: Section[] = [
   {
     heading: "1. Information We Collect",
     paragraphs: [
-      "We collect the email address you provide at signup, images you upload for remodeling, and usage metadata such as render counts, timestamps, and subscription tier.",
+      "We collect the account details you provide at signup — email address, username, gender, age range, postal/zip code, and country — along with images you upload for remodeling and usage metadata such as render counts, timestamps, and subscription tier.",
+      "We also process your IP address to determine your approximate location (country level) so we can enable region-specific features such as Shop the Look. We do not use it to identify your precise location.",
     ],
   },
   {
     heading: "2. How We Use Information",
     paragraphs: [
-      "Information is used to operate the Service, generate AI designs, enforce quotas, process payments via our payment processor, and improve product quality.",
+      "Information is used to operate the Service, generate AI designs, enforce quotas, determine feature availability by region, process payments via our payment processor, and improve product quality.",
     ],
   },
   {
