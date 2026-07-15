@@ -3,6 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import { requireAuth, requireVerifiedEmail, AuthedRequest } from "./middleware/auth";
 import { requireOidc } from "./middleware/oidc";
+import { requireShopRegion } from "./middleware/geo";
+import { evaluateShopRegion } from "./lib/geo";
 import { ApiError } from "./lib/apiError";
 import { handleProxyGenerateImage } from "./proxyGenerateImage";
 import { handleProxyRemodel } from "./proxyRemodel";
@@ -63,10 +65,13 @@ app.post(
   wrap((req) => handleProxyChat(req.body)),
 );
 
+// Shop the Look routes — additionally gated by region (Amazon affiliate is
+// US-only). requireShopRegion returns 403 region_not_supported for non-US.
 app.post(
   "/proxyGenerateProductList",
   requireAuth,
   requireVerifiedEmail,
+  requireShopRegion,
   wrap((req) => handleProxyGenerateProductList(req.body)),
 );
 
@@ -74,6 +79,7 @@ app.post(
   "/proxySwapProduct",
   requireAuth,
   requireVerifiedEmail,
+  requireShopRegion,
   wrap((req) => handleProxySwapProduct(req.body)),
 );
 
@@ -81,7 +87,18 @@ app.post(
   "/proxyShopifySearch",
   requireAuth,
   requireVerifiedEmail,
+  requireShopRegion,
   wrap((req) => handleProxyShopifySearch(req.body)),
+);
+
+// Region check for the frontend: lets the UI hide/disable Shop the Look before
+// the user clicks. Same verdict the middleware enforces.
+app.get(
+  "/geo",
+  requireAuth,
+  (req: AuthedRequest, res) => {
+    res.json(evaluateShopRegion(req));
+  },
 );
 
 app.post(

@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.34.0",
+    "@maxmind/geoip2-node": "^7.0.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "firebase-admin": "^12.7.0",

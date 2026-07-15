@@ -5,6 +5,7 @@ import { ProductItem, ProductSource } from '../types';
 import { generateProductList, swapProduct } from '../services/geminiService';
 import { Button } from './Button';
 import { SHOPIFY_STORE_URL } from '../services/dataService';
+import { useShopRegion } from '../contexts/GeoContext';
 
 interface ShopLookModalProps {
   image: string;
@@ -15,6 +16,7 @@ interface ShopLookModalProps {
 }
 
 export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onClose, budget, onSaveProducts }) => {
+  const { shopEnabled } = useShopRegion();
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState<ProductSource | null>(null);
@@ -130,6 +132,32 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
   };
 
   if (!isOpen) return null;
+
+  // Region gate — Amazon affiliate is US-only. The backend enforces this too;
+  // this just gives non-US users a clear message instead of a source picker.
+  if (!shopEnabled) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 overflow-hidden">
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={onClose} />
+        <div className="relative bg-google-bg w-full max-w-lg rounded-[2rem] shadow-2xl border border-google-border p-10 md:p-12 text-center animate-fade">
+          <button onClick={onClose} className="absolute top-6 right-6 p-3 text-google-gray hover:text-google-dark hover:bg-google-surface rounded-full transition-all">
+            <X size={28} />
+          </button>
+          <div className="w-20 h-20 mx-auto rounded-3xl bg-google-blue/10 border border-google-blue/20 flex items-center justify-center text-google-blue mb-8">
+            <Globe size={36} />
+          </div>
+          <h2 className="text-2xl font-bold text-google-dark mb-3">Not available in your region yet</h2>
+          <p className="text-sm text-google-gray leading-relaxed">
+            Shop the Look is currently available to customers in the <b>United States</b> only. We're
+            working on bringing shopping to more regions soon.
+          </p>
+          <Button onClick={onClose} className="mt-8 px-10 py-3 rounded-full">
+            Got it
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const currentTotal = budgetCompliantProducts.reduce((sum, item) => sum + item.price, 0);
 

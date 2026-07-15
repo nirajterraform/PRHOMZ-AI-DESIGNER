@@ -58,6 +58,35 @@ async function sendPost<TIn>(path: string, body: TIn, authHeader: string): Promi
   return { status: res.status, ok: res.ok, statusText: res.statusText, parsed };
 }
 
+export async function apiGet<TOut>(path: string): Promise<TOut> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "GET",
+    headers: { Authorization: await getAuthHeader() },
+  });
+
+  let parsed: unknown = null;
+  const text = await res.text();
+  if (text) {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = { error: "unparseable_response", message: text.slice(0, 200) };
+    }
+  }
+
+  if (!res.ok) {
+    const err = parsed as { error?: string; message?: string; details?: unknown } | null;
+    throw new ApiClientError(
+      res.status,
+      err?.error || `http_${res.status}`,
+      err?.message || res.statusText || "Request failed.",
+      err?.details,
+    );
+  }
+
+  return parsed as TOut;
+}
+
 export async function apiPost<TIn, TOut>(path: string, body: TIn): Promise<TOut> {
   let result = await sendPost(path, body, await getAuthHeader());
 

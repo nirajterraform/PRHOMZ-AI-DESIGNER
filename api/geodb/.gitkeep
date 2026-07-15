@@ -1,0 +1,2 @@
+# The GeoLite2-Country.mmdb is downloaded into this dir at build time
+# (cloudbuild.yaml) from the MaxMind license key. Not committed.

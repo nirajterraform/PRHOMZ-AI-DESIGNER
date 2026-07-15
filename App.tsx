@@ -10,6 +10,7 @@ import { EmailVerificationPending } from './components/EmailVerificationPending'
 import { MockCheckout } from './components/MockCheckout';
 import { MockPortal } from './components/MockPortal';
 import { UpgradeSuccess } from './components/UpgradeSuccess';
+import { GeoProvider } from './contexts/GeoContext';
 import { AppMode, GeneratedImage, UserAccount, ProductItem } from './types';
 import { Search, HelpCircle, Settings, Grid, X, Loader2, ShoppingCart, LogOut, Crown, AlertTriangle, CalendarClock, MessageSquare, Trash2 } from 'lucide-react';
 import { FeedbackModal } from './components/FeedbackModal';
@@ -258,6 +259,7 @@ function MainApp() {
     userDoc.currentPeriodEnd > Date.now();
 
   return (
+    <GeoProvider>
     <div className="min-h-screen bg-google-bg text-google-dark font-sans flex flex-col md:flex-row">
       <Navigation
         currentMode={currentMode}
@@ -506,6 +508,7 @@ function MainApp() {
         />
       )}
     </div>
+    </GeoProvider>
   );
 }
 

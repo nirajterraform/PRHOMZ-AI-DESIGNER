@@ -30,6 +30,11 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder /build/lib ./lib
 
+# GeoLite2 country DB for Shop the Look geofencing. Downloaded into the build
+# context (api/geodb/) by the cloudbuild.yaml pre-step using the MaxMind license
+# key from Secret Manager. If absent, the app fails OPEN (see lib/geo.ts).
+COPY api/geodb/ ./geodb/
+
 EXPOSE 8080
 
 RUN groupadd --system app && useradd --system --gid app app

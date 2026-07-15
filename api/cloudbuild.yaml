@@ -8,6 +8,23 @@
 #     .
 
 steps:
+  # Download the GeoLite2-Country DB into the build context using the MaxMind
+  # license key from Secret Manager, then bake it into the image (Dockerfile
+  # COPY api/geodb/). The key never lands in the repo or the image.
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: bash
+    secretEnv: ['MAXMIND_LICENSE_KEY']
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+        mkdir -p api/geodb
+        echo "Downloading GeoLite2-Country DB from MaxMind..."
+        curl -fsSL "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=$${MAXMIND_LICENSE_KEY}&suffix=tar.gz" -o /tmp/geolite.tgz
+        tar -xzf /tmp/geolite.tgz -C /tmp
+        cp /tmp/GeoLite2-Country_*/GeoLite2-Country.mmdb api/geodb/GeoLite2-Country.mmdb
+        ls -la api/geodb/
+
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
@@ -24,6 +41,11 @@ steps:
 substitutions:
   _IMAGE_BASE: 'us-central1-docker.pkg.dev/prhomzmvp-nonprod/api/api'
   _IMAGE_TAG: 'v1'
+
+availableSecrets:
+  secretManager:
+    - versionName: 'projects/prhomzmvp-nonprod/secrets/maxmind-license-key/versions/latest'
+      env: 'MAXMIND_LICENSE_KEY'
 
 images:
   - '${_IMAGE_BASE}:${_IMAGE_TAG}'

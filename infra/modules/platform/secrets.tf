@@ -41,3 +41,19 @@ resource "google_secret_manager_secret" "stripe_webhook_secret" {
 
   depends_on = [google_project_service.apis]
 }
+
+# MaxMind GeoLite2 license key — used at BUILD time (cloudbuild.yaml) to download
+# the country DB baked into the api image. Not consumed by any running service.
+# Version is added out-of-band via gcloud (see runbook). If created via gcloud
+# before the next apply, import with:
+#   terraform import module.platform.google_secret_manager_secret.maxmind_license_key projects/prhomzmvp-nonprod/secrets/maxmind-license-key
+resource "google_secret_manager_secret" "maxmind_license_key" {
+  project   = var.project_id
+  secret_id = "maxmind-license-key"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.apis]
+}
