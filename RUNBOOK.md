@@ -48,6 +48,41 @@ terraform apply
 
 ---
 
+## Monthly maintenance — refresh the MaxMind GeoLite2 DB (checklist §6.10)
+
+**Why:** the GeoLite2-Country DB that powers the US-only Shop-the-Look geofence is
+**baked into the api image at build time**. MaxMind updates it ~weekly; country-level
+IP data drifts slowly, so a **monthly** refresh is ample. Left unrefreshed it only
+causes occasional mis-geolocation, and the geofence **fails open**, so this is
+low-urgency housekeeping — not a hard dependency.
+
+**Cadence:** once a month (e.g. the 1st). Set a recurring calendar reminder.
+
+**Procedure** (rebuild api with a fresh DB, then deploy — same as a normal backend deploy;
+the Cloud Build step re-downloads the latest DB from the `maxmind-license-key` secret):
+```bash
+cd /Users/nirajsriwastava/PRHOMZ-AI-DESIGNER
+unset GOOGLE_IMPERSONATE_SERVICE_ACCOUNT
+# Use the next version tag (bump N from the rollback table below):
+gcloud builds submit --config api/cloudbuild.yaml \
+  --substitutions=_IMAGE_TAG=vN --project=prhomzmvp-nonprod .
+gcloud run deploy api            --image=us-central1-docker.pkg.dev/prhomzmvp-nonprod/api/api:vN --region=us-central1 --project=prhomzmvp-nonprod --quiet
+gcloud run deploy stripe-webhook --image=us-central1-docker.pkg.dev/prhomzmvp-nonprod/api/api:vN --region=us-central1 --project=prhomzmvp-nonprod --quiet
+```
+**Verify** the geofence still resolves after deploy:
+```bash
+curl -s https://api-lm4jlrh5qq-uc.a.run.app/geo   # returns {country, shopEnabled}
+```
+Then update the rollback table below with the new `vN` / revisions.
+
+> **Full automation deferred:** an unattended Cloud Scheduler→Cloud Build pipeline that
+> auto-**redeploys** the core api was intentionally NOT set up — the risk of an
+> unattended auto-deploy of the main service outweighs the small benefit of a slightly
+> fresher country DB (which fails open). Revisit post-launch if desired (requires a
+> source-connected build trigger).
+
+---
+
 ## 11.2 Rollback
 
 ### Backend — re-route traffic to the previous revision (instant, no rebuild)
