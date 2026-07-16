@@ -112,6 +112,10 @@ function MainApp() {
     return () => unsubscribe();
   }, [authUser]);
 
+  // Scroll-reactive header (mirrors the landing site's shrinking/frosting nav).
+  // The main content scrolls in an inner panel, so we track that panel's scrollTop.
+  const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
+
   const handleLogout = async () => {
     setIsProfileOpen(false);
     setGeneratedImages([]);
@@ -273,7 +277,13 @@ function MainApp() {
       />
 
       <main className="flex-1 flex flex-col overflow-hidden relative">
-        <header className="h-20 flex items-center justify-between px-6 md:px-10 border-b border-google-border bg-google-bg/95 backdrop-blur-xl sticky top-0 z-30">
+        <header className={`relative flex items-center justify-between px-6 md:px-10 border-b backdrop-blur-xl sticky top-0 z-30 transition-all duration-300 ${
+          isHeaderScrolled
+            ? 'h-16 bg-google-bg/80 border-google-blue/30 shadow-lg shadow-black/20'
+            : 'h-20 bg-google-bg/95 border-google-border'
+        }`}>
+          {/* Luminous accent line at the bottom (mirrors the landing header) */}
+          <div className={`absolute bottom-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-google-blue/60 to-transparent transition-opacity duration-300 ${isHeaderScrolled ? 'opacity-100' : 'opacity-0'}`} />
           <div className="flex items-center flex-1">
             <div className="md:hidden flex flex-col ml-12">
               <h1 className="text-lg font-serif italic tracking-tighter text-google-dark leading-none">
@@ -488,7 +498,10 @@ function MainApp() {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-6 md:p-12 lg:p-16 custom-scrollbar">{renderContent()}</div>
+        <div
+          className="flex-1 overflow-y-auto p-6 md:p-12 lg:p-16 custom-scrollbar"
+          onScroll={(e) => setIsHeaderScrolled(e.currentTarget.scrollTop > 50)}
+        >{renderContent()}</div>
       </main>
 
       {isFeedbackOpen && userDoc && (
