@@ -113,8 +113,20 @@ function MainApp() {
   }, [authUser]);
 
   // Scroll-reactive header (mirrors the landing site's shrinking/frosting nav).
-  // The main content scrolls in an inner panel, so we track that panel's scrollTop.
+  // Different views scroll in their own nested containers, so we listen in the
+  // CAPTURE phase to catch scroll from any descendant scroller, then read its
+  // scrollTop. This makes the header react no matter which panel is scrolling.
   const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
+  useEffect(() => {
+    const onScrollCapture = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      if (target && typeof target.scrollTop === "number") {
+        setIsHeaderScrolled(target.scrollTop > 40);
+      }
+    };
+    window.addEventListener("scroll", onScrollCapture, true);
+    return () => window.removeEventListener("scroll", onScrollCapture, true);
+  }, []);
 
   const handleLogout = async () => {
     setIsProfileOpen(false);
@@ -498,10 +510,7 @@ function MainApp() {
           </div>
         )}
 
-        <div
-          className="flex-1 overflow-y-auto p-6 md:p-12 lg:p-16 custom-scrollbar"
-          onScroll={(e) => setIsHeaderScrolled(e.currentTarget.scrollTop > 50)}
-        >{renderContent()}</div>
+        <div className="flex-1 overflow-y-auto p-6 md:p-12 lg:p-16 custom-scrollbar">{renderContent()}</div>
       </main>
 
       {isFeedbackOpen && userDoc && (
