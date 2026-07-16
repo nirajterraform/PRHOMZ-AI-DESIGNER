@@ -167,3 +167,40 @@ payment fails, or a P0 JS error on signup/generate. Roll back per §11.2.
 |---|---|---|
 | expire-old-images | hourly | `/internal/expireOldImages` |
 | hard-delete-accounts | daily 03:30 | `/internal/hardDeleteExpiredAccounts` |
+
+---
+
+## Firestore backups & restore (checklist §5.6)
+
+**Automated:** a **daily backup schedule** with **7-day retention** runs on the
+`(default)` database (managed in Terraform `firestore.tf`). No manual action needed for
+routine backups. Backups are managed snapshots (not GCS files).
+
+**List schedules & backups:**
+```bash
+unset GOOGLE_IMPERSONATE_SERVICE_ACCOUNT
+gcloud firestore backups schedules list --database="(default)" --project=prhomzmvp-nonprod
+gcloud firestore backups list --project=prhomzmvp-nonprod
+```
+
+**Restore from a backup (incident recovery).** Firestore restores into a **NEW**
+database (it cannot overwrite `(default)` in place) — restore, verify, then repoint the
+app's `VITE_FIREBASE_*` / server config at the restored DB (or migrate data back):
+```bash
+gcloud firestore databases restore \
+  --source-backup=projects/prhomzmvp-nonprod/locations/us-central1/backups/<BACKUP_ID> \
+  --destination-database=restored-YYYYMMDD \
+  --project=prhomzmvp-nonprod
+```
+
+**Manual on-demand export to GCS** (for longer-than-7-day retention, or a portable copy
+before a risky migration). Needs a GCS bucket; the Firestore service agent must have
+`roles/datastore.importExportAdmin` + object write on the bucket:
+```bash
+gcloud firestore export gs://prhomzmvp-nonprod-gallery/firestore-exports/$(date +%Y%m%d) \
+  --project=prhomzmvp-nonprod
+# Re-import (into a fresh/empty DB) with: gcloud firestore import gs://.../<path>
+```
+
+**Retention note:** managed backups keep **7 days**. For compliance/longer retention,
+run the manual GCS export on a monthly cadence (alongside the §6.10 MaxMind refresh).
