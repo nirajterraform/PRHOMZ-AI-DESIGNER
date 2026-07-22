@@ -262,7 +262,7 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
 
               <div className="flex items-center space-x-3 opacity-60">
                  <Package size={18} />
-                 <span className="text-xs font-bold uppercase tracking-[0.2em]">PRHOMZ LIVE FEED</span>
+                 <span className="text-xs font-bold uppercase tracking-[0.2em]">PRHOMZ AI LIVE FEED</span>
               </div>
             </div>
 
