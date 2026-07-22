@@ -37,12 +37,18 @@ export const Pricing: React.FC<PricingProps> = ({ currentTier, subscriptionStatu
   }
 
   async function handleManageSubscription() {
+    // Open the Customer Portal in a new tab so the app stays open behind it.
+    // Blank tab opened synchronously (within the click) to dodge popup blockers.
+    const portalTab = window.open("", "_blank");
     setLoadingTier(currentTier);
     setError(null);
     try {
       const url = await createCustomerPortalSession();
-      window.location.href = url;
+      if (portalTab) portalTab.location.href = url;
+      else window.location.href = url; // fallback if the popup was blocked
+      setLoadingTier(null);
     } catch (e) {
+      if (portalTab) portalTab.close();
       const message = (e as { message?: string })?.message || "Failed to open customer portal.";
       setError({ tier: currentTier, message });
       setLoadingTier(null);

@@ -11,11 +11,10 @@ import { MockCheckout } from './components/MockCheckout';
 import { MockPortal } from './components/MockPortal';
 import { UpgradeSuccess } from './components/UpgradeSuccess';
 import { GeoProvider } from './contexts/GeoContext';
-import { AppMode, GeneratedImage, UserAccount, ProductItem } from './types';
-import { Search, HelpCircle, Settings, Grid, X, Loader2, ShoppingCart, LogOut, Crown, AlertTriangle, CalendarClock, MessageSquare, Trash2 } from 'lucide-react';
+import { AppMode, GeneratedImage, UserAccount } from './types';
+import { Loader2, LogOut, Crown, AlertTriangle, CalendarClock, MessageSquare, Trash2 } from 'lucide-react';
 import { FeedbackModal } from './components/FeedbackModal';
 import { DeleteAccountModal } from './components/DeleteAccountModal';
-import { searchCatalog } from './services/geminiService';
 import { onAuthChange, signOut } from './services/authService';
 import { subscribeToUser } from './services/userService';
 import { subscribeToGallery } from './services/galleryService';
@@ -44,9 +43,6 @@ function MainApp() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<ProductItem[] | null>(null);
 
   // Phase 4 Day 3: detect post-checkout redirect from Stripe / MockCheckout and
   // surface the UpgradeSuccess screen. We capture the param once on mount so
@@ -142,12 +138,19 @@ function MainApp() {
       setCurrentMode(AppMode.PRICING);
       return;
     }
+    // Open the Customer Portal in a NEW TAB so the Designer stays open behind it.
+    // Open a blank tab synchronously (within the click) to dodge popup blockers,
+    // then point it at the Stripe URL once the session is created.
+    const portalTab = window.open('', '_blank');
     setIsOpeningPortal(true);
     setPortalError(null);
     try {
       const url = await createCustomerPortalSession();
-      window.location.href = url;
+      if (portalTab) portalTab.location.href = url;
+      else window.location.href = url; // fallback if the popup was blocked
+      setIsOpeningPortal(false);
     } catch (e) {
+      if (portalTab) portalTab.close();
       setPortalError((e as { message?: string })?.message || 'Failed to open customer portal.');
       setIsOpeningPortal(false);
     }
@@ -169,25 +172,6 @@ function MainApp() {
   const handleEditFromGallery = (imageUrl: string) => {
     setActiveEditImage(imageUrl);
     setCurrentMode(AppMode.REMODEL);
-  };
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    setIsSearching(true);
-    try {
-      const results = await searchCatalog(searchQuery);
-      setSearchResults(results);
-    } catch (error) {
-      console.error('Search failed', error);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const clearSearch = () => {
-    setSearchQuery('');
-    setSearchResults(null);
   };
 
   const renderContent = () => {
@@ -302,41 +286,9 @@ function MainApp() {
                 PRHOMZ <span className="text-google-blue not-italic font-sans font-black">AI</span>
               </h1>
             </div>
-
-            <form
-              onSubmit={handleSearch}
-              className="hidden md:flex flex-1 max-w-xl bg-google-surface rounded-2xl px-5 py-2.5 items-center border border-google-border shadow-inner focus-within:border-google-blue/50 transition-all relative"
-            >
-              <Search size={16} className="text-google-gray mr-4" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search PRHOMZ Catalog for furniture..."
-                className="bg-transparent border-none focus:outline-none text-sm w-full text-google-dark placeholder-google-gray font-medium"
-              />
-              {isSearching && <Loader2 size={16} className="animate-spin text-google-blue absolute right-4" />}
-              {!isSearching && searchQuery && (
-                <button type="button" onClick={clearSearch} className="text-google-gray hover:text-google-dark absolute right-4">
-                  <X size={16} />
-                </button>
-              )}
-            </form>
           </div>
 
           <div className="flex items-center space-x-3 ml-4">
-            <div className="hidden lg:flex items-center space-x-1 mr-4">
-              <button className="p-2.5 text-google-gray hover:bg-google-surface hover:text-google-dark rounded-xl transition-all">
-                <HelpCircle size={18} />
-              </button>
-              <button className="p-2.5 text-google-gray hover:bg-google-surface hover:text-google-dark rounded-xl transition-all">
-                <Settings size={18} />
-              </button>
-              <button className="p-2.5 text-google-gray hover:bg-google-surface hover:text-google-dark rounded-xl transition-all">
-                <Grid size={18} />
-              </button>
-            </div>
-
             <div
               className="relative pl-6 border-l border-google-border flex items-center space-x-3 group cursor-pointer"
               onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -438,75 +390,6 @@ function MainApp() {
             >
               {isOpeningPortal ? 'Opening…' : 'Manage plan'}
             </button>
-          </div>
-        )}
-
-        {searchResults && (
-          <div className="fixed inset-0 top-20 z-40 bg-google-bg/95 backdrop-blur-md overflow-y-auto animate-fade">
-            <div className="max-w-6xl mx-auto p-8 md:p-12">
-              <div className="flex justify-between items-end mb-12">
-                <div>
-                  <h2 className="text-3xl font-bold text-google-dark">Catalog Results</h2>
-                  <p className="text-google-gray text-xs font-bold uppercase tracking-widest mt-2">
-                    Showing matches for "{searchQuery}"
-                  </p>
-                </div>
-                <button
-                  onClick={clearSearch}
-                  className="px-6 py-2.5 rounded-full border border-google-border text-[10px] font-bold uppercase tracking-widest hover:bg-google-surface transition-all flex items-center"
-                >
-                  <X size={14} className="mr-2" /> Close Results
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {searchResults.map((item) => (
-                  <div
-                    key={item.id}
-                    className="group bg-google-surface rounded-2xl border border-google-border overflow-hidden hover:border-google-blue transition-all shadow-sm flex flex-col"
-                  >
-                    <div className="aspect-square bg-google-bg relative overflow-hidden">
-                      <img
-                        src={item.imageUrl}
-                        alt={item.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = `https://placehold.co/400x400/1e1e1e/8ab4f8?text=${encodeURIComponent(item.name)}`;
-                        }}
-                      />
-                      <div className="absolute top-4 right-4">
-                        <span className="bg-google-blue/90 text-google-bg px-3 py-1 rounded-full text-sm font-bold shadow-lg">
-                          ${item.price.toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="p-6 flex-1 flex flex-col justify-between">
-                      <div className="space-y-2 mb-6">
-                        <h4 className="font-bold text-google-dark text-lg leading-tight">{item.name}</h4>
-                        <p className="text-xs text-google-gray leading-relaxed line-clamp-3">{item.description}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <a
-                          href={item.productUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 bg-google-blue text-google-bg py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all flex items-center justify-center"
-                        >
-                          <ShoppingCart size={14} className="mr-2" /> View on Store
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {searchResults.length === 0 && (
-                <div className="py-20 text-center opacity-40">
-                  <Search size={48} className="mx-auto mb-4" />
-                  <p className="text-sm font-bold uppercase tracking-widest">No matching artifacts found in catalog</p>
-                </div>
-              )}
-            </div>
           </div>
         )}
 

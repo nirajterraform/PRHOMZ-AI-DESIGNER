@@ -58,6 +58,7 @@ export const TIER_DISPLAY: Record<UserTier, TierDisplay> = {
     watermarked: true,
     highlights: [
       "PRHOMZ AI-powered Design Assistant",
+      "Shop the Look furniture sourcing",
       "10 renders per month",
       "2 renders per day",
       "24-hour gallery retention",
@@ -75,6 +76,7 @@ export const TIER_DISPLAY: Record<UserTier, TierDisplay> = {
     watermarked: false,
     highlights: [
       "PRHOMZ AI-powered Design Assistant",
+      "Shop the Look furniture sourcing",
       "100 renders per month",
       "5 renders per day",
       "7-day gallery retention",
@@ -92,6 +94,7 @@ export const TIER_DISPLAY: Record<UserTier, TierDisplay> = {
     watermarked: false,
     highlights: [
       "PRHOMZ AI-powered Design Assistant",
+      "Shop the Look furniture sourcing",
       "300 renders per month",
       "Unlimited daily renders",
       "15-day gallery retention",
@@ -109,6 +112,7 @@ export const TIER_DISPLAY: Record<UserTier, TierDisplay> = {
     watermarked: false,
     highlights: [
       "PRHOMZ AI-powered Design Assistant",
+      "Shop the Look furniture sourcing",
       "Unlimited monthly renders",
       "Unlimited daily renders",
       "30-day gallery retention",

@@ -41,7 +41,7 @@ export const QuotaBadge: React.FC<QuotaBadgeProps> = ({ user, onUpgradeClick }) 
       {!daily.isUnlimited && (
         <QuotaChip
           icon={Clock}
-          label="Today"
+          label="Renders today"
           snapshot={daily}
           onUpgradeClick={onUpgradeClick}
         />
@@ -49,7 +49,7 @@ export const QuotaBadge: React.FC<QuotaBadgeProps> = ({ user, onUpgradeClick }) 
       {!monthly.isUnlimited && (
         <QuotaChip
           icon={CalendarDays}
-          label="This month"
+          label="Renders this month"
           snapshot={monthly}
           onUpgradeClick={onUpgradeClick}
           resetAt={monthlyResetAt}
@@ -89,7 +89,7 @@ const QuotaChip: React.FC<QuotaChipProps> = ({ icon: Icon, label, snapshot, onUp
           {snapshot.used} / {snapshot.limit}
         </span>
         <span className={`text-[10px] font-medium ${styles.subtextClass} tabular-nums`}>
-          {snapshot.remaining} left
+          {snapshot.remaining} renders left
         </span>
       </div>
 
