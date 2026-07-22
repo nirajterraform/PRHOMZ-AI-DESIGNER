@@ -341,9 +341,9 @@ function MainApp() {
               className="relative pl-6 border-l border-google-border flex items-center space-x-3 group cursor-pointer"
               onClick={() => setIsProfileOpen(!isProfileOpen)}
             >
-              <div className="flex flex-col text-right hidden sm:block">
-                <span className="text-[10px] font-bold text-google-dark uppercase tracking-wider">{userDoc.name}</span>
-                <span className="text-[9px] font-bold text-google-blue uppercase tracking-widest">{userDoc.tier}</span>
+              <div className="hidden sm:flex flex-col items-end text-right gap-1">
+                <span className="text-[10px] font-bold text-google-dark uppercase tracking-wider leading-none">{userDoc.name}</span>
+                <span className="text-[9px] font-bold text-google-blue uppercase tracking-widest leading-none">{userDoc.tier}</span>
               </div>
               <div className="w-10 h-10 rounded-2xl bg-google-blue text-google-bg flex items-center justify-center text-sm font-black shadow-lg shadow-google-blue/20 transition-transform group-hover:scale-105">
                 {userDoc.name.charAt(0).toUpperCase()}
