@@ -29,7 +29,7 @@ export async function applyWatermark(input: Buffer): Promise<Buffer> {
       stroke="black"
       stroke-width="${strokeWidth}"
       stroke-opacity="0.45"
-    >PRHOMZ • Freemium</text>
+    >PRHOMZ AI • Freemium</text>
   </svg>`;
 
   return sharp(input)
