@@ -156,8 +156,16 @@ payment fails, or a P0 JS error on signup/generate. Roll back per §11.2.
 
 | Component | Current | Previous (rollback) |
 |---|---|---|
-| api image | v16 (rev api-00021-g4c) | v15 (rev api-00020-256) |
-| stripe-webhook image | v16 (rev stripe-webhook-00013-j6f) | v15 (rev stripe-webhook-00012-c56) |
+| api image | v17 (rev api-00022-d8m) | v16 (rev api-00021-g4c) |
+| stripe-webhook image | v17 (rev stripe-webhook-00014-gfc) | v16 (rev stripe-webhook-00013-j6f) |
+
+> **⚠️ Terraform drift (2026-07-24):** `stripe-webhook` now has a `SENDGRID_API_KEY`
+> env (secret `sendgrid-api-key`) added via `gcloud run ... --update-secrets`, and the
+> monitoring alert channels were changed via `gcloud` — **neither is in Terraform yet.**
+> An `--image`-only deploy preserves them, but a **`terraform apply` would revert both**
+> (remove the SendGrid env + reset alert-policy channels). Reconcile into Terraform
+> (secret + IAM + env in `cloud_run.tf`/`secrets.tf`/`iam.tf`; channels in
+> `monitoring_alerts.tf`) before running any `terraform apply`.
 
 ---
 

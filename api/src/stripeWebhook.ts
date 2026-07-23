@@ -3,6 +3,7 @@ import StripeSDK from "stripe";
 import { rollingResetAt, type UserTier } from "./_shared/tiers";
 import { recomputeExpiry } from "./lib/recomputeExpiry";
 import { getTierFromPriceId, USE_MOCK_STRIPE } from "./_shared/pricing";
+import { sendCancellationEmail } from "./lib/subscriptionEmail";
 
 interface StripeSubscriptionShape {
   id: string;
@@ -279,6 +280,13 @@ async function applyTierChange(uid: string, update: TierUpdate): Promise<void> {
   const existingPeriodEnd = (existing.currentPeriodEnd as number | null) || null;
   const periodChanged = update.currentPeriodEnd !== existingPeriodEnd;
 
+  // Detect the cancellation transition: status flips to "canceled" (cancel at
+  // period end) when it wasn't already. Reading pre-update state makes this
+  // idempotent across Stripe webhook retries — a redelivered event sees the
+  // doc already "canceled" and won't re-send.
+  const justCancelled =
+    update.subscriptionStatus === "canceled" && existing.subscriptionStatus !== "canceled";
+
   const patch: Record<string, unknown> = {
     tier: update.tier,
     subscriptionId: update.subscriptionId,
@@ -314,6 +322,21 @@ async function applyTierChange(uid: string, update: TierUpdate): Promise<void> {
       galleryDocsUpdated: count,
     }),
   );
+
+  // Send the branded cancellation-confirmation email on the cancel transition.
+  // Uses the pre-update tier (still the paid plan while cancel-at-period-end)
+  // and the period end as the "access until" date. Fire-and-forget: sendEmail
+  // never throws, so a mail hiccup can't fail the webhook (which would make
+  // Stripe retry and reprocess the event).
+  if (justCancelled) {
+    await sendCancellationEmail(
+      existing.email as string | undefined,
+      (existing.firstName as string | undefined) ??
+        (existing.name as string | undefined)?.split(" ")[0],
+      update.tier,
+      update.currentPeriodEnd,
+    );
+  }
 }
 
 async function markPastDue(uid: string): Promise<void> {
