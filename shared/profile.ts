@@ -63,14 +63,17 @@ export const COUNTRIES: string[] = [
 // --- Shared validation helpers (used by both client and server) ---
 
 export interface SignupProfile {
-  username: string;
+  firstName: string;
+  lastName: string;
   gender: string;
   ageRange: string;
   zipCode: string;
   country: string;
 }
 
-const USERNAME_REGEX = /^[A-Za-z0-9_]{3,20}$/;
+// Names: 1-40 chars, must start with a letter; allow letters, spaces, hyphens,
+// apostrophes (covers names like "Mary-Jane", "O'Brien", "De La Cruz").
+const NAME_REGEX = /^[A-Za-z][A-Za-z' -]{0,39}$/;
 const ZIP_REGEX = /^[A-Za-z0-9][A-Za-z0-9 -]{1,8}[A-Za-z0-9]$/;
 
 /**
@@ -81,9 +84,13 @@ const ZIP_REGEX = /^[A-Za-z0-9][A-Za-z0-9 -]{1,8}[A-Za-z0-9]$/;
 export function validateSignupProfile(p: Partial<SignupProfile> | undefined): string | null {
   if (!p) return "Profile details are required.";
 
-  const username = (p.username ?? "").trim();
-  if (!USERNAME_REGEX.test(username)) {
-    return "Username must be 3-20 characters: letters, numbers, or underscore.";
+  const firstName = (p.firstName ?? "").trim();
+  if (!NAME_REGEX.test(firstName)) {
+    return "Please enter a valid first name.";
+  }
+  const lastName = (p.lastName ?? "").trim();
+  if (!NAME_REGEX.test(lastName)) {
+    return "Please enter a valid last name.";
   }
   if (!GENDER_OPTIONS.includes(p.gender as Gender)) {
     return "Please select a gender.";

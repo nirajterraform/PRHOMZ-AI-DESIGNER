@@ -54,7 +54,8 @@ export const Auth: React.FC = () => {
   const [legalModal, setLegalModal] = useState<LegalDocKind | null>(null);
 
   // Signup profile fields (all mandatory).
-  const [username, setUsername] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [gender, setGender] = useState("");
   const [ageRange, setAgeRange] = useState("");
   const [zipCode, setZipCode] = useState("");
@@ -68,7 +69,8 @@ export const Auth: React.FC = () => {
     setResetSent(false);
     setAcceptedTerms(false);
     setAcceptedPrivacy(false);
-    setUsername("");
+    setFirstName("");
+    setLastName("");
     setGender("");
     setAgeRange("");
     setZipCode("");
@@ -85,7 +87,8 @@ export const Auth: React.FC = () => {
     setError(null);
 
     const profile: SignupProfile = {
-      username: username.trim(),
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
       gender,
       ageRange,
       zipCode: zipCode.trim(),
@@ -241,14 +244,24 @@ export const Auth: React.FC = () => {
                 <p className="text-sm text-google-gray">All fields are required.</p>
               </div>
 
-              <TextField
-                value={username}
-                setValue={setUsername}
-                placeholder="Username"
-                icon={<User size={22} />}
-                autoComplete="username"
-                maxLength={20}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <TextField
+                  value={firstName}
+                  setValue={setFirstName}
+                  placeholder="First name"
+                  icon={<User size={22} />}
+                  autoComplete="given-name"
+                  maxLength={40}
+                />
+                <TextField
+                  value={lastName}
+                  setValue={setLastName}
+                  placeholder="Last name"
+                  icon={<User size={22} />}
+                  autoComplete="family-name"
+                  maxLength={40}
+                />
+              </div>
               <EmailField email={email} setEmail={setEmail} />
 
               <div className="grid grid-cols-2 gap-4">
@@ -295,7 +308,8 @@ export const Auth: React.FC = () => {
                 isLoading={isLoading}
                 className="w-full py-5 rounded-2xl text-base shadow-xl"
                 disabled={
-                  !username ||
+                  !firstName ||
+                  !lastName ||
                   !gender ||
                   !ageRange ||
                   !zipCode ||

@@ -15,7 +15,7 @@ export interface OnSignupOutput {
  * sign-in if missing). Idempotent — if the user doc already exists, returns
  * created=false without clobbering.
  *
- * `profile` carries the mandatory signup fields (username, gender, age range,
+ * `profile` carries the mandatory signup fields (first name, last name, gender, age range,
  * zip, country). It's validated server-side against the shared rules — never
  * trust the client. On first-sign-in fallback (no profile), the doc is still
  * created with best-effort defaults so the user isn't locked out.
@@ -47,7 +47,8 @@ export async function handleOnSignup(
     const profileError = validateSignupProfile(profile);
     if (profileError) throw new ApiError("invalid-argument", profileError);
     profileFields = {
-      username: profile.username!.trim(),
+      firstName: profile.firstName!.trim(),
+      lastName: profile.lastName!.trim(),
       gender: profile.gender!,
       ageRange: profile.ageRange!,
       zipCode: profile.zipCode!.trim(),
@@ -55,8 +56,11 @@ export async function handleOnSignup(
     };
   }
 
-  // Display name: the chosen username when present, else derived from email.
-  const name = profileFields?.username || safeEmail.split("@")[0] || "User";
+  // Display name: "First Last" from the signup profile when present, else
+  // derived from email.
+  const name = profileFields
+    ? `${profileFields.firstName} ${profileFields.lastName}`.trim()
+    : safeEmail.split("@")[0] || "User";
 
   let stripeCustomerId: string | null = null;
   if (!USE_MOCK_STRIPE) {
@@ -92,7 +96,8 @@ export async function handleOnSignup(
     email: safeEmail,
     name,
     // Profile captured at signup (null on the legacy first-sign-in path).
-    username: profileFields?.username ?? null,
+    firstName: profileFields?.firstName ?? null,
+    lastName: profileFields?.lastName ?? null,
     gender: profileFields?.gender ?? null,
     ageRange: profileFields?.ageRange ?? null,
     zipCode: profileFields?.zipCode ?? null,
