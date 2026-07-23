@@ -1,6 +1,6 @@
 import * as admin from "firebase-admin";
 import StripeSDK from "stripe";
-import { startOfNextMonthUTC, type UserTier } from "./_shared/tiers";
+import { rollingResetAt, type UserTier } from "./_shared/tiers";
 import { recomputeExpiry } from "./lib/recomputeExpiry";
 import { getTierFromPriceId, USE_MOCK_STRIPE } from "./_shared/pricing";
 
@@ -293,7 +293,7 @@ async function applyTierChange(uid: string, update: TierUpdate): Promise<void> {
     if (update.tier !== "freemium" && update.currentPeriodEnd && update.currentPeriodEnd > Date.now()) {
       patch.monthlyResetAt = update.currentPeriodEnd;
     } else {
-      patch.monthlyResetAt = startOfNextMonthUTC();
+      patch.monthlyResetAt = rollingResetAt(Date.now());
     }
     // Fresh billing period → fresh render allotment.
     patch.monthlyDesignCount = 0;

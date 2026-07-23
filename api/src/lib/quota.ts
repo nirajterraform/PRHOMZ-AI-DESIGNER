@@ -1,5 +1,5 @@
 import * as admin from "firebase-admin";
-import { QUOTA_BY_TIER, UserTier, startOfNextMonthUTC } from "../_shared/tiers";
+import { QUOTA_BY_TIER, UserTier, rollingResetAt } from "../_shared/tiers";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
@@ -15,14 +15,15 @@ const BURST_PER_MINUTE = parseInt(process.env.GEN_BURST_PER_MIN || "10", 10);
  *
  *   - Paid tier with a future Stripe period end → align to it (so quota resets
  *     when the billing cycle rolls over).
- *   - Freemium, or stale/missing period end → fall back to start of next
- *     calendar month UTC so the user still rolls eventually.
+ *   - Freemium, or stale/missing period end → roll 30 days forward from now,
+ *     so the reset is a rolling cycle from the user's own date rather than the
+ *     calendar 1st.
  */
 export function nextResetAt(tier: UserTier, currentPeriodEnd: number, now: number): number {
   if (tier !== "freemium" && currentPeriodEnd > now) {
     return currentPeriodEnd;
   }
-  return startOfNextMonthUTC();
+  return rollingResetAt(now);
 }
 
 export interface QuotaCheckResult {

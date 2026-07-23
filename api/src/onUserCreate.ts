@@ -1,6 +1,6 @@
 import * as admin from "firebase-admin";
 import Stripe from "stripe";
-import { startOfNextMonthUTC } from "./_shared/tiers";
+import { rollingResetAt } from "./_shared/tiers";
 import { USE_MOCK_STRIPE } from "./_shared/pricing";
 import { validateSignupProfile, type SignupProfile } from "./_shared/profile";
 import { ApiError } from "./lib/apiError";
@@ -111,7 +111,7 @@ export async function handleOnSignup(
     renderTimestamps: [],
     totalRenders: 0,
     monthlyDesignCount: 0,
-    monthlyResetAt: startOfNextMonthUTC(),
+    monthlyResetAt: rollingResetAt(now),
     createdAt: now,
     lastActive: now,
   });
