@@ -156,8 +156,8 @@ payment fails, or a P0 JS error on signup/generate. Roll back per §11.2.
 
 | Component | Current | Previous (rollback) |
 |---|---|---|
-| api image | v14 (rev api-00019-d54) | v13 (rev api-00018-w4j) |
-| stripe-webhook image | v14 (rev stripe-webhook-00011-zkg) | v12 (rev stripe-webhook-00010-m4g) |
+| api image | v15 (rev api-00020-256) | v14 (rev api-00019-d54) |
+| stripe-webhook image | v15 (rev stripe-webhook-00012-c56) | v14 (rev stripe-webhook-00011-zkg) |
 
 ---
 
