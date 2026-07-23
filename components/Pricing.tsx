@@ -24,12 +24,18 @@ export const Pricing: React.FC<PricingProps> = ({ currentTier, subscriptionStatu
   const [error, setError] = useState<{ tier: UserTier; message: string } | null>(null);
 
   async function handleUpgrade(tier: Exclude<UserTier, "freemium">) {
+    // Open Stripe Checkout in a new tab so the app stays open behind it.
+    // Blank tab opened synchronously (within the click) to dodge popup blockers.
+    const checkoutTab = window.open("", "_blank");
     setLoadingTier(tier);
     setError(null);
     try {
       const url = await createCheckoutSession(tier);
-      window.location.href = url;
+      if (checkoutTab) checkoutTab.location.href = url;
+      else window.location.href = url; // fallback if the popup was blocked
+      setLoadingTier(null);
     } catch (e) {
+      if (checkoutTab) checkoutTab.close();
       const message = (e as { message?: string })?.message || "Failed to start checkout.";
       setError({ tier, message });
       setLoadingTier(null);
