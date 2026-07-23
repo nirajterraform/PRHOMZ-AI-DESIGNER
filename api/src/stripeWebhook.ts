@@ -11,6 +11,7 @@ interface StripeSubscriptionShape {
   customer: string | { id: string };
   items: { data: Array<{ price: { id: string }; current_period_end?: number }> };
   cancel_at_period_end?: boolean;
+  cancel_at?: number | null;
   status: string;
   current_period_end?: number;
 }
@@ -171,8 +172,12 @@ async function handleRealStripeEvent(rawBody: Buffer, signature: string): Promis
         return;
       }
 
-      const cancelAtPeriodEnd = sub.cancel_at_period_end === true;
-      const status: "active" | "past_due" | "canceled" = cancelAtPeriodEnd
+      // The Customer Portal may express "cancel at period end" either via the
+      // cancel_at_period_end boolean OR by setting cancel_at to a specific date
+      // (this account's portal uses the latter, leaving the boolean false).
+      // Treat either as a scheduled cancellation.
+      const cancelScheduled = sub.cancel_at_period_end === true || sub.cancel_at != null;
+      const status: "active" | "past_due" | "canceled" = cancelScheduled
         ? "canceled"
         : sub.status === "past_due" || sub.status === "unpaid"
           ? "past_due"

@@ -156,8 +156,8 @@ payment fails, or a P0 JS error on signup/generate. Roll back per §11.2.
 
 | Component | Current | Previous (rollback) |
 |---|---|---|
-| api image | v17 (rev api-00022-d8m) | v16 (rev api-00021-g4c) |
-| stripe-webhook image | v17 (rev stripe-webhook-00014-gfc) | v16 (rev stripe-webhook-00013-j6f) |
+| api image | v18 (rev api-00023-5wd) | v17 (rev api-00022-d8m) |
+| stripe-webhook image | v18 (rev stripe-webhook-00015-4gm) | v17 (rev stripe-webhook-00014-gfc) |
 
 > **⚠️ Terraform drift (2026-07-24):** `stripe-webhook` now has a `SENDGRID_API_KEY`
 > env (secret `sendgrid-api-key`) added via `gcloud run ... --update-secrets`, and the
