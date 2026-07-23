@@ -22,7 +22,7 @@
 - [ ] **§12.9** On **https://prhomzai.com**, click the **Designer** CTA → lands on **designer.prhomzai.com** (branded URL, not `*.web.app`)
 - [ ] **§12.1** Sign up with a fresh email → **verification email arrives in inbox** (not spam). Check Gmail. Note delivery time.
   - _Fail? → SendGrid activity + Firebase Auth logs_
-- [ ] Complete the **mandatory profile fields** (username/gender/age/zip/country) + password reveal toggle works
+- [ ] Complete the **mandatory profile fields** (first name/last name/gender/age/zip/country) + password reveal toggle works
 - [ ] Click verification link → returns to app, verified
 - [ ] **§12.2** Redeem a **free render** → image generates successfully
   - _Fail? → Sentry + api logs (Vertex/Gemini call)_

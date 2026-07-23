@@ -29,6 +29,12 @@ export const EmailVerificationPending: React.FC<EmailVerificationPendingProps> =
           // still says false and the backend keeps rejecting requests.
           if (auth.currentUser.emailVerified) {
             await auth.currentUser.getIdToken(true);
+            // reload()/getIdToken() update auth.currentUser in place but do NOT
+            // fire onAuthStateChanged, so the app's auth subscription never sees
+            // emailVerified flip to true and the user stays stuck on this screen
+            // until a manual refresh. Reload the page so the subscription
+            // re-initialises with the now-verified user and logs them straight in.
+            window.location.reload();
           }
         } catch {
           // ignore transient reload errors
