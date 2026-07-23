@@ -177,18 +177,39 @@ export const Pricing: React.FC<PricingProps> = ({ currentTier, subscriptionStatu
               </div>
 
               <ul className="space-y-3 mb-8 flex-1">
-                {display.highlights.map((highlight) => (
-                  <li key={highlight} className="flex items-start space-x-3">
-                    <div
-                      className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        isCurrent ? "bg-google-blue/15 text-google-blue" : "bg-google-bg text-google-gray"
+                {display.highlights.map((highlight) => {
+                  // Emphasize the render-quota lines (monthly/daily) so the
+                  // difference between tiers is easy to compare at a glance.
+                  const l = highlight.toLowerCase();
+                  const isRenderMetric =
+                    l.includes("render") &&
+                    (l.includes("month") || l.includes("day") || l.includes("daily"));
+                  return (
+                    <li
+                      key={highlight}
+                      className={`flex items-start space-x-3 ${
+                        isRenderMetric ? "-mx-2 px-2 py-1 rounded-lg bg-google-blue/[0.07]" : ""
                       }`}
                     >
-                      <Check size={12} strokeWidth={3} />
-                    </div>
-                    <span className="text-sm text-google-dark leading-relaxed">{highlight}</span>
-                  </li>
-                ))}
+                      <div
+                        className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          isRenderMetric || isCurrent
+                            ? "bg-google-blue/15 text-google-blue"
+                            : "bg-google-bg text-google-gray"
+                        }`}
+                      >
+                        <Check size={12} strokeWidth={3} />
+                      </div>
+                      <span
+                        className={`text-sm leading-relaxed ${
+                          isRenderMetric ? "text-google-blue font-bold" : "text-google-dark"
+                        }`}
+                      >
+                        {highlight}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
 
               <Button

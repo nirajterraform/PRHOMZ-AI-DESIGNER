@@ -117,7 +117,6 @@ export const TIER_DISPLAY: Record<UserTier, TierDisplay> = {
       "Unlimited daily renders",
       "30-day gallery retention",
       "No watermark",
-      "Designer badge on profile",
     ],
   },
 };
