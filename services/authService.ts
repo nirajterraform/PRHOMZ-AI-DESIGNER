@@ -78,6 +78,18 @@ export async function signUp(
     }
   }
 
+  // GA4 conversion: a new account was created. Guarded — gtag is only present
+  // in the browser once the analytics snippet has loaded.
+  try {
+    (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag?.(
+      "event",
+      "sign_up",
+      { method: "email" },
+    );
+  } catch {
+    // analytics must never break the signup flow
+  }
+
   return credential.user;
 }
 
