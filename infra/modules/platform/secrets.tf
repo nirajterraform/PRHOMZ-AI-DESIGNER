@@ -57,3 +57,18 @@ resource "google_secret_manager_secret" "maxmind_license_key" {
 
   depends_on = [google_project_service.apis]
 }
+
+# SendGrid API key (Mail Send) — used by the stripe-webhook service to send the
+# branded subscription-cancellation email. Version is added out-of-band via
+# gcloud (see runbook). Created via gcloud on 2026-07-24; import before apply:
+#   terraform import module.platform.google_secret_manager_secret.sendgrid_api_key projects/prhomzmvp-nonprod/secrets/sendgrid-api-key
+resource "google_secret_manager_secret" "sendgrid_api_key" {
+  project   = var.project_id
+  secret_id = "sendgrid-api-key"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.apis]
+}

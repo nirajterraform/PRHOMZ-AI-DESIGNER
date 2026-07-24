@@ -53,6 +53,16 @@ resource "google_secret_manager_secret_iam_member" "runtime_stripe_webhook" {
   member    = "serviceAccount:${google_service_account.cloud_run_runtime.email}"
 }
 
+# Lets the webhook read the SendGrid key to send cancellation emails.
+# Created via gcloud 2026-07-24; import before apply:
+#   terraform import 'module.platform.google_secret_manager_secret_iam_member.runtime_sendgrid' "projects/prhomzmvp-nonprod/secrets/sendgrid-api-key roles/secretmanager.secretAccessor serviceAccount:cloud-run-runtime@prhomzmvp-nonprod.iam.gserviceaccount.com"
+resource "google_secret_manager_secret_iam_member" "runtime_sendgrid" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.sendgrid_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run_runtime.email}"
+}
+
 resource "google_project_iam_member" "runtime_auth_admin" {
   project = var.project_id
   role    = "roles/firebaseauth.admin"

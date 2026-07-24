@@ -159,13 +159,16 @@ payment fails, or a P0 JS error on signup/generate. Roll back per §11.2.
 | api image | v18 (rev api-00023-5wd) | v17 (rev api-00022-d8m) |
 | stripe-webhook image | v18 (rev stripe-webhook-00015-4gm) | v17 (rev stripe-webhook-00014-gfc) |
 
-> **⚠️ Terraform drift (2026-07-24):** `stripe-webhook` now has a `SENDGRID_API_KEY`
-> env (secret `sendgrid-api-key`) added via `gcloud run ... --update-secrets`, and the
-> monitoring alert channels were changed via `gcloud` — **neither is in Terraform yet.**
-> An `--image`-only deploy preserves them, but a **`terraform apply` would revert both**
-> (remove the SendGrid env + reset alert-policy channels). Reconcile into Terraform
-> (secret + IAM + env in `cloud_run.tf`/`secrets.tf`/`iam.tf`; channels in
-> `monitoring_alerts.tf`) before running any `terraform apply`.
+> **✅ Terraform reconciled (2026-07-24):** the SendGrid env/secret/IAM and the alert-channel
+> changes are now codified. `sendgrid-api-key` secret + `runtime_sendgrid` IAM + `SENDGRID_API_KEY`
+> env are in `secrets.tf`/`iam.tf`/`cloud_run.tf`; the two new channels (`prhomzai.alert`, Arun)
+> were added to `alert_emails` and **imported** into state (so are the secret + IAM). A verified
+> `terraform plan` shows **0 to add, 0 to destroy, ~12 in-place changes** — all benign: channel
+> display-name normalization ("PRHOMZ AI Alerts" → "Email - prhomzai.alert@gmail.com"), alert-policy
+> channel **reordering** (same 3 channels, no coverage lost), removal of default `scaling`/`phone_number`/
+> `multi_tenant` blocks (pre-existing drift; does NOT touch SendGrid SMTP or authorized domains).
+> **Safe to `terraform apply`.** Note: `prhomzai.finance` channel is intentionally NOT in `alert_emails`
+> (reserved for the billing budget, not operational alerts).
 
 ---
 
