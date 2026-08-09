@@ -36,7 +36,6 @@ function MainApp() {
   const [userDoc, setUserDoc] = useState<UserAccount | null>(null);
 
   const [currentMode, setCurrentMode] = useState<AppMode>(AppMode.REMODEL);
-  const [isNavOpen, setIsNavOpen] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [activeEditImage, setActiveEditImage] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -183,6 +182,7 @@ function MainApp() {
             initialImage={activeEditImage}
             onClearInitial={() => setActiveEditImage(null)}
             currentUser={userDoc}
+            recentImages={generatedImages}
             onNavigateToPricing={() => setCurrentMode(AppMode.PRICING)}
           />
         );
@@ -260,37 +260,36 @@ function MainApp() {
 
   return (
     <GeoProvider>
-    <div className="min-h-screen bg-google-bg text-google-dark font-sans flex flex-col md:flex-row">
-      <Navigation
-        currentMode={currentMode}
-        onModeChange={(mode) => {
-          setCurrentMode(mode);
-          if (mode === AppMode.REMODEL) setActiveEditImage(null);
-        }}
-        isOpen={isNavOpen}
-        setIsOpen={setIsNavOpen}
-        userRole={userDoc.role}
-      />
-
+    <div className="h-screen overflow-hidden bg-google-bg text-google-dark font-sans flex flex-col">
       <main className="flex-1 flex flex-col overflow-hidden relative">
-        <header className={`relative flex items-center justify-between px-6 md:px-10 border-b backdrop-blur-xl sticky top-0 z-30 transition-all duration-300 ${
+        <header className={`relative flex flex-wrap md:grid md:grid-cols-[1fr_auto_1fr] items-center gap-x-3 gap-y-2 md:gap-4 px-4 md:px-6 py-2.5 md:py-0 border-b backdrop-blur-xl sticky top-0 z-30 transition-all duration-300 ${
           isHeaderScrolled
-            ? 'h-16 bg-google-bg/80 border-google-blue/30 shadow-lg shadow-black/20'
-            : 'h-20 bg-google-bg/95 border-google-border'
+            ? 'md:h-16 bg-google-bg/80 border-google-blue/30 shadow-lg shadow-black/20'
+            : 'md:h-16 bg-google-bg/95 border-google-border'
         }`}>
           {/* Luminous accent line at the bottom (mirrors the landing header) */}
           <div className={`absolute bottom-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-google-blue/60 to-transparent transition-opacity duration-300 ${isHeaderScrolled ? 'opacity-100' : 'opacity-0'}`} />
-          <div className="flex items-center flex-1">
-            <div className="md:hidden flex flex-col ml-12">
-              <h1 className="text-lg font-serif italic tracking-tighter text-google-dark leading-none">
-                PRHOMZ <span className="text-google-blue not-italic font-sans font-black">AI</span>
-              </h1>
-            </div>
+
+          {/* Brand */}
+          <h1 className="order-1 flex-none md:justify-self-start text-base md:text-lg font-serif italic tracking-tighter text-google-dark leading-none whitespace-nowrap">
+            PRHOMZ <span className="text-google-blue not-italic font-sans font-black ml-0.5">AI DESIGNER</span>
+          </h1>
+
+          {/* Top navigation menu (own row on mobile, centered on desktop) */}
+          <div className="order-3 md:order-2 basis-full w-full md:basis-auto md:w-auto md:justify-self-center min-w-0">
+            <Navigation
+              currentMode={currentMode}
+              onModeChange={(mode) => {
+                setCurrentMode(mode);
+                if (mode === AppMode.REMODEL) setActiveEditImage(null);
+              }}
+              userRole={userDoc.role}
+            />
           </div>
 
-          <div className="flex items-center space-x-3 ml-4">
+          <div className="order-2 md:order-3 ml-auto md:ml-0 md:justify-self-end flex items-center space-x-3">
             <div
-              className="relative pl-6 border-l border-google-border flex items-center space-x-3 group cursor-pointer"
+              className="relative md:pl-6 md:border-l border-google-border flex items-center space-x-3 group cursor-pointer"
               onClick={() => setIsProfileOpen(!isProfileOpen)}
             >
               <div className="hidden sm:flex flex-col items-end text-right gap-1">
@@ -393,7 +392,7 @@ function MainApp() {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-6 md:p-12 lg:p-16 custom-scrollbar">{renderContent()}</div>
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-3 custom-scrollbar">{renderContent()}</div>
       </main>
 
       {isFeedbackOpen && userDoc && (

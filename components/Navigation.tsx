@@ -1,17 +1,21 @@
 
 import React from 'react';
-import { MessageSquare, ImageIcon, ShieldCheck, Sparkles, Menu, X, Crown } from 'lucide-react';
+import { MessageSquare, ImageIcon, ShieldCheck, Sparkles, Crown } from 'lucide-react';
 import { AppMode } from '../types';
 
 interface NavigationProps {
   currentMode: AppMode;
   onModeChange: (mode: AppMode) => void;
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
   userRole: 'Client' | 'Designer' | 'Admin';
 }
 
-export const Navigation: React.FC<NavigationProps> = ({ currentMode, onModeChange, isOpen, setIsOpen, userRole }) => {
+/**
+ * Top navigation menu. Previously a fixed 288px left rail; now a horizontal
+ * segmented pill that lives inside the app header (brand on the left, avatar on
+ * the right, this menu centered). On small screens the row scrolls horizontally
+ * instead of collapsing behind a hamburger — all destinations stay visible.
+ */
+export const Navigation: React.FC<NavigationProps> = ({ currentMode, onModeChange, userRole }) => {
   const navItems = [
     { mode: AppMode.REMODEL, label: 'Remodel', icon: Sparkles, roles: ['Client', 'Designer', 'Admin'] },
     { mode: AppMode.ASSISTANT, label: 'Assistant', icon: MessageSquare, roles: ['Client', 'Designer', 'Admin'] },
@@ -23,56 +27,25 @@ export const Navigation: React.FC<NavigationProps> = ({ currentMode, onModeChang
   const visibleItems = navItems.filter(item => item.roles.includes(userRole));
 
   return (
-    <>
-      <div className="md:hidden fixed top-3 left-4 z-50">
-        <button 
-          onClick={() => setIsOpen(!isOpen)} 
-          className="p-2.5 bg-google-surface border border-google-border rounded-xl shadow-lg text-google-dark active:scale-95 transition-transform"
-        >
-          {isOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      </div>
-
-      <aside className={`
-        fixed inset-y-0 left-0 z-40 w-72 bg-google-bg border-r border-google-border transition-transform duration-500 ease-in-out md:translate-x-0 md:static
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="flex flex-col h-full">
-          {/* REFINED BRANDING BLOCK */}
-          <div className="h-20 flex flex-col justify-center px-8 border-b border-google-border bg-gradient-to-b from-google-surface/20 to-transparent">
-            <h1 className="text-lg font-serif italic tracking-tighter text-google-dark leading-none whitespace-nowrap">
-              PRHOMZ <span className="text-google-blue not-italic font-sans font-black ml-0.5">AI DESIGNER</span>
-            </h1>
-          </div>
-
-          <div className="flex-1 py-8 px-4 space-y-2">
-            {visibleItems.map((item) => {
-              const isActive = currentMode === item.mode;
-              return (
-                <button
-                  key={item.mode}
-                  onClick={() => {
-                    onModeChange(item.mode);
-                    if (window.innerWidth < 768) setIsOpen(false);
-                  }}
-                  className={`
-                    w-full flex items-center space-x-4 px-6 py-4 text-sm font-semibold rounded-2xl transition-all duration-300
-                    ${isActive 
-                      ? 'bg-google-lightBlue text-google-blue shadow-[0_0_15px_rgba(138,180,248,0.05)]' 
-                      : 'text-google-gray hover:bg-google-surface/50 hover:text-google-dark'}
-                  `}
-                >
-                  <item.icon size={20} className={`${isActive ? 'text-google-blue' : 'text-google-gray'} transition-colors`} />
-                  <span className="tracking-wide text-sm"> {item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-        </div>
-      </aside>
-
-      {isOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden animate-fade" onClick={() => setIsOpen(false)} />}
-    </>
+    <nav className="flex items-center gap-1 bg-google-surface/50 border border-google-border rounded-2xl p-1 overflow-x-auto no-scrollbar">
+      {visibleItems.map((item) => {
+        const isActive = currentMode === item.mode;
+        return (
+          <button
+            key={item.mode}
+            onClick={() => onModeChange(item.mode)}
+            className={`
+              flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-300
+              ${isActive
+                ? 'bg-google-lightBlue text-google-blue shadow-[0_0_15px_rgba(138,180,248,0.05)]'
+                : 'text-google-gray hover:bg-google-surface hover:text-google-dark'}
+            `}
+          >
+            <item.icon size={17} className={`${isActive ? 'text-google-blue' : 'text-google-gray'} transition-colors`} />
+            <span className="tracking-wide">{item.label}</span>
+          </button>
+        );
+      })}
+    </nav>
   );
 };

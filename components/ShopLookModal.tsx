@@ -7,6 +7,7 @@ import { ApiClientError } from '../services/apiClient';
 import { Button } from './Button';
 import { SHOPIFY_STORE_URL } from '../services/dataService';
 import { useShopRegion } from '../contexts/GeoContext';
+import { track } from '../services/analytics';
 
 interface ShopLookModalProps {
   image: string;
@@ -106,6 +107,7 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
   };
 
   const handleSourcingAction = (item: ProductItem) => {
+    track('select_product', { item_name: item.name, price: item.price, has_url: !!item.productUrl });
     if (item.productUrl) {
       window.open(item.productUrl, '_blank');
     } else {
@@ -115,6 +117,7 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
 
   const handleSaveSelection = () => {
     if (onSaveProducts) {
+      track('save_look', { items: budgetCompliantProducts.length });
       onSaveProducts(budgetCompliantProducts);
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000);

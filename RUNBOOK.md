@@ -156,8 +156,10 @@ payment fails, or a P0 JS error on signup/generate. Roll back per §11.2.
 
 | Component | Current | Previous (rollback) |
 |---|---|---|
-| api image | v18 (rev api-00023-5wd) | v17 (rev api-00022-d8m) |
-| stripe-webhook image | v18 (rev stripe-webhook-00015-4gm) | v17 (rev stripe-webhook-00014-gfc) |
+| api image | v20 (rev api-00025-wn2) | v19 (rev api-00024-zfv) |
+| stripe-webhook image | v20 (rev stripe-webhook-00019-4dd) | v19 (rev stripe-webhook-00018-hf7) |
+
+> **v19–v20 (2026-08-06):** quota changes in `shared/tiers.ts` (backup `shared/tiers.ts.bak.quota` = pre-change state). v19: freemium daily→unlimited, monthly 10→30. v20: basic daily 5→unlimited (monthly 100 kept). **Revert:** restore the backup → rebuild → redeploy api+stripe-webhook to the previous images above, OR rebuild a fresh tag with reverted config.
 
 > **✅ Terraform reconciled (2026-07-24):** the SendGrid env/secret/IAM and the alert-channel
 > changes are now codified. `sendgrid-api-key` secret + `runtime_sendgrid` IAM + `SENDGRID_API_KEY`

@@ -14,6 +14,17 @@ export default defineConfig(() => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+      build: {
+        // Additive: build the real app (index.html) AND the backend-free design
+        // mock (preview.html) so the mock is reachable at /preview.html on a
+        // Firebase preview channel. Does not change the main app entry.
+        rollupOptions: {
+          input: {
+            main: path.resolve(__dirname, 'index.html'),
+            preview: path.resolve(__dirname, 'preview.html'),
+          },
+        },
+      },
     };
 });

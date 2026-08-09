@@ -1,7 +1,35 @@
 @import "tailwindcss";
 
 @theme {
+  /* Warm editorial theme: deep-green shell + brass accent (Fraunces/Archivo).
+     Token names kept as google-* so the whole app re-skins with no logic change. */
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --color-accent: #C9A063;
+  --color-google-gray: #8E9A90;
+  --color-google-dark: #EDE8DB;
+  --color-google-border: #3E4B43;
+  --color-google-surface: #232C26;
+  --color-google-bg: #1B221D;
+  --color-google-blue: #C9A063;
+  --color-google-lightBlue: rgba(201, 160, 99, 0.12);
+}
+
+:root {
+  --bg: #1B221D;
+  --surface: #232C26;
+  --accent: #C9A063; /* brass */
+  --text-primary: #EDE8DB;
+  --text-secondary: #8E9A90;
+  --border: #3E4B43;
+}
+
+/* Brand-palette variant (VITE_THEME=brand): same UI, live blue-on-dark theme
+   from prhomzai.com / designer.prhomzai.com, Inter font. Overrides the green
+   tokens above + the Tailwind @theme tokens (utilities read them via var()). */
+:root[data-theme="brand"] {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Inter", ui-sans-serif, system-ui, sans-serif;
   --color-accent: #8ab4f8;
   --color-google-gray: #9aa0a6;
   --color-google-dark: #e8eaed;
@@ -10,12 +38,9 @@
   --color-google-bg: #121212;
   --color-google-blue: #8ab4f8;
   --color-google-lightBlue: rgba(138, 180, 248, 0.1);
-}
-
-:root {
   --bg: #121212;
   --surface: #1e1e1e;
-  --accent: #8ab4f8; /* Softer Blue for Dark Mode */
+  --accent: #8ab4f8;
   --text-primary: #e8eaed;
   --text-secondary: #9aa0a6;
   --border: #3c4043;
@@ -24,7 +49,7 @@
 body {
   background-color: var(--bg);
   color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
@@ -36,7 +61,7 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3c4043;
+  background: var(--border);
   border-radius: 10px;
   border: 2px solid var(--bg);
 }
@@ -53,7 +78,7 @@ body {
 input[type="range"] {
   -webkit-appearance: none;
   height: 4px;
-  background: #3c4043;
+  background: var(--border);
   border-radius: 2px;
 }
 
@@ -69,6 +94,10 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .nav-item-active {
+  background-color: rgba(201, 160, 99, 0.12);
+  color: #C9A063 !important;
+}
+:root[data-theme="brand"] .nav-item-active {
   background-color: rgba(138, 180, 248, 0.1);
   color: #8ab4f8 !important;
 }
@@ -86,6 +115,11 @@ input[type="range"]::-webkit-slider-thumb {
 .animate-fade {
   animation: fade 0.3s ease-in-out;
 }
+
+/* Hide scrollbars on horizontal strips (nav pill, filmstrip) and internally
+   scrolling panels, without disabling scroll. */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 @keyframes loading {
   0% { transform: translateX(-100%); }
