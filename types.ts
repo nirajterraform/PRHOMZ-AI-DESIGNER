@@ -103,4 +103,8 @@ export const DESIGN_PRESETS: DesignPreset[] = [
   { id: 'coastal', label: 'Coastal Modern', prompt: 'light airy feel, driftwood tones, oceanic blues, linen textures', isTrending: true },
   { id: 'industrial', label: 'Industrial Loft', prompt: 'exposed architectural elements, metal accents, raw wood, urban aesthetic' },
   { id: 'transitional', label: 'Transitional Luxe', prompt: 'perfect balance of traditional comfort and modern sleekness, timeless elegance', isTrending: true },
+  { id: 'scandi', label: 'Scandinavian', prompt: 'bright nordic minimalism, pale woods, soft neutral palette, cozy hygge textures' },
+  { id: 'midcentury', label: 'Mid-Century', prompt: 'mid-century modern, walnut tones, tapered legs, retro warmth, bold graphic accents', isTrending: true },
+  { id: 'farmhouse', label: 'Farmhouse', prompt: 'modern farmhouse, shiplap detailing, warm rustic wood, cozy neutral palette' },
+  { id: 'artdeco', label: 'Art Deco', prompt: 'art deco glamour, rich jewel tones, brass accents, bold geometric elegance' },
 ];

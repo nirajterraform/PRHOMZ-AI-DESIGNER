@@ -188,8 +188,8 @@ export const Auth: React.FC = () => {
       <div className="relative min-h-full flex items-center justify-center py-10 px-6">
        <div className="w-full max-w-xl animate-fade">
         <div className="text-center mb-12">
-          <h1 className="text-3xl md:text-4xl font-serif italic tracking-tighter text-google-dark mb-4 whitespace-nowrap">
-            PRHOMZ <span className="text-google-blue not-italic font-sans font-black">AI DESIGNER</span>
+          <h1 className="text-3xl md:text-4xl font-display italic font-medium uppercase tracking-wide text-google-dark mb-4 whitespace-nowrap">
+            PRHOMZ <span className="text-google-blue not-italic font-sans font-black tracking-tight">AI DESIGNER</span>
           </h1>
           <p className="text-google-gray text-sm font-bold uppercase tracking-[0.4em] opacity-80">
             Decor Design Delivered

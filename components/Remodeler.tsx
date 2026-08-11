@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Download, ShoppingBag, Plus, ImageIcon, Wand2, RefreshCcw, Star, Clock, Zap, MoveHorizontal } from 'lucide-react';
+import { Download, ShoppingBag, Plus, Wand2, RefreshCcw, Star, Clock, Zap, MoveHorizontal } from 'lucide-react';
 import { remodelImage } from '../services/geminiService';
 import { saveProductsToImage } from '../services/galleryService';
 import { downloadImage } from '../services/downloadImage';
@@ -17,16 +17,12 @@ import {
 } from '../services/quotaService';
 import { track } from '../services/analytics';
 
-// Mood swatch per style preset (visual cue in the Design Direction dropdown).
-const STYLE_SWATCHES: Record<string, string> = {
-  modern: 'linear-gradient(135deg,#2f3b47,#8ab4f8)',
-  boho: 'linear-gradient(135deg,#7a4a2c,#d59a63)',
-  japandi: 'linear-gradient(135deg,#5c4a38,#cdb79a)',
-  coastal: 'linear-gradient(135deg,#3f6f8a,#bfe0ee)',
-  industrial: 'linear-gradient(135deg,#26262a,#63636b)',
-  transitional: 'linear-gradient(135deg,#6f665c,#dccfc0)',
-};
-const swatchFor = (id: string) => STYLE_SWATCHES[id] ?? 'linear-gradient(135deg,#3c4043,#6b7075)';
+// Room types for the project meta dropdown — becomes the gallery design title
+// (so designs are no longer saved as "Untitled").
+const ROOM_TYPES = [
+  'Living Room', 'Bedroom', 'Kids Room', 'Kitchen', 'Bathroom',
+  'Dining Room', 'Home Office', 'Outdoor', 'Entryway', 'Loft', 'Other',
+];
 
 // Default showcase before/after — master-bedroom pair from the prhomzai.com landing gallery.
 const LANDING_BEFORE = 'https://files.elfsightcdn.com/eafe4a4d-3436-495d-b748-5bdce62d911d/693f4b74-d27c-424e-b077-f28b534017a9/WhatsApp-Image-2026-04-20-at-2-32-07-PM.jpg';
@@ -52,8 +48,11 @@ export const Remodeler: React.FC<RemodelerProps> = ({
   const [, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialImage || null);
   const [instruction, setInstruction] = useState('');
-  const [projectName] = useState('');
+  const [roomType, setRoomType] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<string>('');
+  // A design opened from the "Your Designs" strip. Its original source photo is
+  // NOT stored, so we show it as a single result (no false before/after wipe).
+  const [historicalView, setHistoricalView] = useState<GeneratedImage | null>(null);
   const [budget, setBudget] = useState(5000);
   const [isProcessing, setIsProcessing] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(null);
@@ -116,6 +115,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({
       setPreviewUrl(initialImage);
       setResultImage(null);
       setGenerationTime(null);
+      setHistoricalView(null);
     }
   }, [initialImage]);
 
@@ -197,6 +197,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({
         setPreviewUrl(ev.target?.result as string);
         setResultImage(null);
         setGenerationTime(null);
+        setHistoricalView(null);
         if (onClearInitial) onClearInitial();
       };
       reader.readAsDataURL(file);
@@ -212,6 +213,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({
     setGenerationTime(null);
     setResultImage(null);
     setLastUploadedImageId(null);
+    setHistoricalView(null);
     comparedRef.current = false;
     track('generate_design', { style_id: selectedStyle || 'none', budget });
     const apiStartTime = Date.now();
@@ -223,7 +225,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({
       const result = await remodelImage({
         base64Image: previewUrl,
         instruction: fullInstruction,
-        projectName: projectName || 'Untitled Iteration',
+        projectName: roomType || 'Untitled',
       });
 
       stopTimer();
@@ -243,7 +245,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({
         expiresAt: Date.now(),
         tierAtCreation: currentUser.tier,
         watermarked: result.watermarked,
-        projectName: projectName || 'Untitled Iteration',
+        projectName: roomType || 'Untitled',
       } as GeneratedImage);
     } catch (error) {
       stopTimer();
@@ -274,6 +276,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({
     setResultImage(null);
     setSelectedFile(null);
     setGenerationTime(null);
+    setHistoricalView(null);
     if (onClearInitial) onClearInitial();
   };
 
@@ -294,11 +297,14 @@ export const Remodeler: React.FC<RemodelerProps> = ({
 
   // Stage model: show the landing sample before/after by default, the uploaded
   // room once chosen, and the before/after wipe once a design is generated.
+  const isHistorical = !!historicalView; // a past design opened from the strip
   const showResult = !!resultImage;
-  const isSample = !previewUrl && !resultImage;
+  const isSample = !previewUrl && !resultImage && !isHistorical;
   const compareBefore = showResult ? previewUrl : (previewUrl || LANDING_BEFORE);
   const compareAfter = showResult ? resultImage : (previewUrl || LANDING_AFTER);
-  const isCompare = showResult ? !!previewUrl : isSample; // two distinct images to wipe between
+  // Only wipe between two genuinely paired images. A historical design has no
+  // stored source photo, so it renders as a single result (no false before/after).
+  const isCompare = isHistorical ? false : (showResult ? !!previewUrl : isSample);
   const sampleStyleLabel = DESIGN_PRESETS.find(p => p.id === selectedStyle)?.label || 'Modern Chic';
   const steps = [
     { n: 1, label: 'Photo', done: !!previewUrl },
@@ -319,14 +325,18 @@ export const Remodeler: React.FC<RemodelerProps> = ({
           {daily && (
             <button
               onClick={onNavigateToPricing}
-              className="hidden sm:inline-flex items-center gap-2 text-xs text-google-gray border border-google-border bg-google-surface rounded-lg px-3 py-1.5 hover:border-google-blue/40 transition-colors"
-              title="Manage membership"
+              className={`inline-flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
+                isQuotaReached
+                  ? 'text-red-400 border border-red-400/50 bg-red-400/10'
+                  : 'text-google-gray border border-google-border bg-google-surface hover:border-google-blue/40'
+              }`}
+              title={isQuotaReached ? 'Quota reached — upgrade to keep designing' : 'Manage membership'}
             >
-              <Clock size={13} className="text-google-blue" />
-              <span><b className="text-google-dark font-semibold">{daily.isUnlimited ? '∞' : `${daily.used}/${daily.limit}`}</b> today</span>
-              {monthly && !monthly.isUnlimited && (
-                <span className="text-google-gray/70">· {monthly.used}/{monthly.limit} mo</span>
-              )}
+              <Clock size={13} className={`shrink-0 ${isQuotaReached ? 'text-red-400' : 'text-google-blue'}`} />
+              {/* Renders count only — turns red when quota is reached */}
+              <span className="whitespace-nowrap">
+                Renders <b className={`font-semibold ${isQuotaReached ? 'text-red-400' : 'text-google-dark'}`}>{monthly && !monthly.isUnlimited ? `${monthly.used}/${monthly.limit}` : 'Unlimited'}</b>
+              </span>
             </button>
           )}
           {previewUrl && (
@@ -362,12 +372,26 @@ export const Remodeler: React.FC<RemodelerProps> = ({
               })}
             </div>
 
-            {/* compact upload — full-width drop */}
+            {/* project meta — room type (becomes the gallery design title) */}
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-bold text-google-gray uppercase tracking-wider">Project · Room Type</p>
+              <select
+                value={roomType}
+                disabled={isQuotaReached}
+                onChange={(e) => setRoomType(e.target.value)}
+                className={`w-full bg-google-bg border border-google-border rounded-xl px-3 py-2 text-sm text-google-dark focus:ring-2 focus:ring-google-blue focus:outline-none cursor-pointer ${isQuotaReached ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <option value="">Select a room…</option>
+                {ROOM_TYPES.map((rt) => <option key={rt} value={rt}>{rt}</option>)}
+              </select>
+            </div>
+
+            {/* square upload — extends down to use the available space */}
             <div className="space-y-1.5">
               <p className="text-[10px] font-bold text-google-gray uppercase tracking-wider">Your Room</p>
               <div
                 onClick={() => !isQuotaReached && fileInputRef.current?.click()}
-                className={`relative w-full h-24 rounded-xl overflow-hidden flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-colors border-2 border-dashed
+                className={`relative w-full aspect-square max-h-56 rounded-xl overflow-hidden flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-colors border-2 border-dashed
                   ${previewUrl ? 'border-google-blue' : 'border-google-border bg-google-bg hover:bg-google-surface'}
                   ${isQuotaReached ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -398,7 +422,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({
                 <p className="text-[10px] font-bold text-google-gray uppercase tracking-wider">Design Direction</p>
                 {selectedStyle && <span className="text-[11px] font-semibold text-google-blue">{DESIGN_PRESETS.find(p => p.id === selectedStyle)?.label}</span>}
               </div>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto pr-0.5">
                 {DESIGN_PRESETS.map((style) => {
                   const on = selectedStyle === style.id;
                   return (
@@ -411,14 +435,12 @@ export const Remodeler: React.FC<RemodelerProps> = ({
                         if (!on) track('select_style', { style_id: style.id, style_name: style.label });
                         setSelectedStyle(next);
                       }}
-                      style={{ background: swatchFor(style.id) }}
-                      className={`relative h-12 rounded-xl overflow-hidden border transition-transform hover:-translate-y-0.5 ${
-                        on ? 'border-google-blue ring-1 ring-google-blue' : 'border-transparent'
+                      className={`relative h-12 rounded-xl overflow-hidden border transition-all hover:-translate-y-0.5 bg-google-bg ${
+                        on ? 'border-google-blue ring-1 ring-google-blue' : 'border-google-border hover:border-google-blue/40'
                       } ${isQuotaReached ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <span className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
-                      <span className="absolute left-2 bottom-1.5 text-left text-xs font-semibold text-white drop-shadow">{style.label}</span>
-                      {style.isTrending && <Star size={11} className="absolute top-1.5 left-2 text-white/90" fill="currentColor" />}
+                      <span className={`absolute left-2 bottom-1.5 text-left text-xs font-semibold drop-shadow ${on ? 'text-google-blue' : 'text-google-dark'}`}>{style.label}</span>
+                      {style.isTrending && <Star size={11} className="absolute top-1.5 left-2 text-google-blue" fill="currentColor" />}
                       {on && (
                         <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-google-blue text-google-bg grid place-items-center text-[9px] font-black">✓</span>
                       )}
@@ -480,11 +502,21 @@ export const Remodeler: React.FC<RemodelerProps> = ({
                 </div>
               </div>
             ) : (isQuotaReached && !resultImage) ? (
-              <div className="opacity-40 flex flex-col items-center gap-5">
-                <div className="w-20 h-20 border-2 border-dashed border-google-gray rounded-full flex items-center justify-center">
-                  <ImageIcon className="w-9 h-9 text-google-gray" />
+              <div className="flex flex-col items-center gap-4 text-center px-8 max-w-md animate-fade">
+                <div className="w-16 h-16 rounded-2xl bg-google-lightBlue border border-google-blue/30 flex items-center justify-center">
+                  <Star className="w-8 h-8 text-google-blue" fill="currentColor" />
                 </div>
-                <p className="text-sm font-bold text-google-gray uppercase tracking-widest">Daily Quota Reached</p>
+                <div>
+                  <h3 className="text-lg font-serif text-google-dark leading-tight">You've reached your free quota</h3>
+                  <p className="text-sm text-google-gray mt-1.5 leading-relaxed">
+                    {monthly && !monthly.isUnlimited
+                      ? `You've used all ${monthly.limit} renders this month. Upgrade to keep designing and unlock more.`
+                      : `Upgrade to keep designing and unlock more renders.`}
+                  </p>
+                </div>
+                <Button onClick={onNavigateToPricing} className="rounded-full px-8 py-3 text-sm font-bold mt-1">
+                  <Star className="w-4 h-4 mr-2" /> Upgrade membership
+                </Button>
               </div>
             ) : (
               /* Unified compare stage — sample by default, upload once chosen,
@@ -513,11 +545,15 @@ export const Remodeler: React.FC<RemodelerProps> = ({
 
                 {/* meta chip (top-left) */}
                 <div className="absolute top-5 left-5 z-20 pointer-events-none flex items-center gap-2 bg-google-bg/70 backdrop-blur px-3 py-1.5 rounded-lg text-xs text-google-dark">
-                  {isSample ? <>Example · <span className="text-google-blue">{sampleStyleLabel}</span></> : <>Your room{selectedStyle ? <> · <span className="text-google-blue">{sampleStyleLabel}</span></> : null}</>}
+                  {isHistorical
+                    ? <>Design{historicalView?.projectName ? <> · <span className="text-google-blue">{historicalView.projectName}</span></> : null}</>
+                    : isSample
+                      ? <>Example · <span className="text-google-blue">{sampleStyleLabel}</span></>
+                      : <>Your room{selectedStyle ? <> · <span className="text-google-blue">{sampleStyleLabel}</span></> : null}</>}
                 </div>
 
                 {isSample && (
-                  <span className="absolute top-5 left-1/2 -translate-x-1/2 z-20 pointer-events-none text-[10px] font-black uppercase tracking-widest bg-black/55 text-white px-3 py-1 rounded-lg">Sample · not your room</span>
+                  <span className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none text-xs sm:text-sm font-black uppercase tracking-widest bg-black/75 text-white px-4 py-1.5 rounded-lg border border-white/15 shadow-lg">Sample · not your room</span>
                 )}
 
                 {isCompare && (
@@ -557,7 +593,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({
             )}
           </div>
 
-          {resultImage && currentUser && !feedbackDismissed && (
+          {resultImage && currentUser && !feedbackDismissed && !isHistorical && (
             <FeedbackForm
               user={currentUser}
               context="remodel-result"
@@ -577,7 +613,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({
                   return (
                     <button
                       key={img.id}
-                      onClick={() => { setResultImage(img.url); setLastUploadedImageId(img.id); setComparePos(50); }}
+                      onClick={() => { setResultImage(img.url); setHistoricalView(img); setLastUploadedImageId(img.id); }}
                       className={`relative flex-none w-24 h-16 rounded-xl overflow-hidden border-2 transition-all ${
                         active ? 'border-google-blue ring-2 ring-google-blue/30' : 'border-google-border opacity-70 hover:opacity-100'
                       }`}
@@ -594,7 +630,7 @@ export const Remodeler: React.FC<RemodelerProps> = ({
             <div className="flex-none flex items-center justify-between gap-4 bg-google-surface border border-google-border rounded-2xl px-4 py-3">
               <div>
                 <p className="text-sm font-semibold text-google-dark">Keep every design</p>
-                <p className="text-xs text-google-gray">Free designs disappear after 7 days. Premium keeps them and lifts your daily limit.</p>
+                <p className="text-xs text-google-gray">Free designs disappear after 24 hours. Premium keeps them and lifts your daily limit.</p>
               </div>
               <button onClick={onNavigateToPricing} className="flex-none border border-google-blue text-google-blue rounded-full px-4 py-1.5 text-xs font-semibold hover:bg-google-blue hover:text-google-bg transition-colors">See membership</button>
             </div>

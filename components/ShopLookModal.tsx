@@ -106,14 +106,13 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
     setSelections(prev => ({ ...prev, [productId]: color }));
   };
 
-  const handleSourcingAction = (item: ProductItem) => {
+  // External store links open in a NEW TAB via a real <a> (mobile-safe). The
+  // previous JS window.open was popup-blocked / replaced the app on phones,
+  // making users "lose the app". A real anchor keeps the app alive in its tab.
+  const productHref = (item: ProductItem) =>
+    item.productUrl || `${SHOPIFY_STORE_URL}/search?q=${encodeURIComponent(item.name)}`;
+  const trackSourcing = (item: ProductItem) =>
     track('select_product', { item_name: item.name, price: item.price, has_url: !!item.productUrl });
-    if (item.productUrl) {
-      window.open(item.productUrl, '_blank');
-    } else {
-      window.open(`${SHOPIFY_STORE_URL}/search?q=${encodeURIComponent(item.name)}`, '_blank');
-    }
-  };
 
   const handleSaveSelection = () => {
     if (onSaveProducts) {
@@ -270,10 +269,10 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
             </div>
 
             <div className="flex-1 flex flex-col h-full bg-google-bg overflow-hidden">
-              <div className="p-8 border-b border-google-border flex items-center justify-between bg-google-bg/50">
+              <div className="p-4 md:p-8 border-b border-google-border flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-google-bg/50">
                 <div className="flex flex-col">
-                  <h3 className="text-xl font-bold text-google-dark">Spatial Catalog Results ({source})</h3>
-                  <div className="flex items-center space-x-3 mt-2">
+                  <h3 className="text-lg md:text-xl font-bold text-google-dark">Spatial Catalog Results ({source})</h3>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
                     <div className="flex items-center space-x-2 px-3 py-1 rounded-lg bg-google-lightBlue text-google-blue border border-google-blue/20">
                       <BadgeCheck size={14} />
                       <span className="text-xs font-bold uppercase tracking-tight">Approx Source Pricing</span>
@@ -294,7 +293,7 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 custom-scrollbar">
                 {loading ? (
                   <div className="h-full flex flex-col items-center justify-center space-y-8">
                     <div className="relative">
@@ -326,10 +325,10 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
                 ) : (
                   <div className="space-y-4">
                     {budgetCompliantProducts.map((item) => (
-                      <div key={item.id} className="bg-google-surface p-6 rounded-2xl border border-google-border flex flex-col hover:border-google-blue/40 transition-all group">
+                      <div key={item.id} className="bg-google-surface p-4 md:p-6 rounded-2xl border border-google-border flex flex-col hover:border-google-blue/40 transition-all group">
                         <div className="flex-1 flex flex-col justify-between py-1">
-                          <div className="flex justify-between items-start">
-                            <div className="max-w-[70%]">
+                          <div className="flex justify-between items-start gap-3">
+                            <div className="min-w-0 flex-1">
                               <div className="flex items-center space-x-3 mb-2">
                                  {swappingIds.has(item.id) ? (
                                    <Loader2 size={16} className="text-google-blue animate-spin" />
@@ -352,23 +351,26 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between mt-6">
-                            <div className="flex gap-2">
+                          <div className="flex flex-col gap-3 mt-5 md:mt-6 md:flex-row md:items-center md:justify-between">
+                            <div className="flex flex-wrap gap-2">
                               {item.colors.map(color => (
                                 <button key={color} onClick={() => handleColorSelect(item.id, color)} className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${selections[item.id] === color ? 'bg-google-blue text-google-bg border-google-blue' : 'bg-google-bg border-google-border text-google-gray hover:text-google-dark'}`}>
                                   {color}
                                 </button>
                               ))}
                             </div>
-                            <div className="flex space-x-3">
-                              <button onClick={() => handleSwap(item.id)} className="p-2 text-google-gray border border-google-border rounded-xl hover:text-google-blue hover:bg-google-bg transition-all" title="Alternative Piece"><RefreshCw size={16} /></button>
-                              <button 
-                                onClick={() => handleSourcingAction(item)} 
-                                className="px-6 py-2.5 bg-google-blue text-google-bg rounded-xl text-xs font-bold flex items-center shadow-xl hover:brightness-110 transition-all hover:scale-105 active:scale-95"
+                            <div className="flex items-center gap-3">
+                              <button onClick={() => handleSwap(item.id)} className="flex-none p-2.5 text-google-gray border border-google-border rounded-xl hover:text-google-blue hover:bg-google-bg transition-all" title="Alternative Piece"><RefreshCw size={16} /></button>
+                              <a
+                                href={productHref(item)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => trackSourcing(item)}
+                                className="flex-1 md:flex-none justify-center px-6 py-3 md:py-2.5 bg-google-blue text-google-bg rounded-xl text-xs font-bold flex items-center shadow-xl hover:brightness-110 transition-all active:scale-95"
                               >
-                                <ExternalLink size={14} className="mr-2" /> 
-                                Buy Now
-                              </button>
+                                <ExternalLink size={14} className="mr-2" />
+                                Buy on {source}
+                              </a>
                             </div>
                           </div>
                         </div>
@@ -379,8 +381,8 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
               </div>
 
               {!loading && budgetCompliantProducts.length > 0 && (
-                <div className="p-8 border-t border-google-border bg-google-surface">
-                  <div className="flex justify-between items-center max-w-5xl mx-auto">
+                <div className="p-4 md:p-8 border-t border-google-border bg-google-surface">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center max-w-5xl mx-auto">
                     <div>
                       <div className="flex items-center space-x-2 mb-1">
                         <span className="text-xs font-bold text-google-gray uppercase tracking-widest">Curation Total</span>

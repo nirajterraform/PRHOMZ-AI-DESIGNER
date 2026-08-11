@@ -270,9 +270,17 @@ function MainApp() {
           {/* Luminous accent line at the bottom (mirrors the landing header) */}
           <div className={`absolute bottom-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-google-blue/60 to-transparent transition-opacity duration-300 ${isHeaderScrolled ? 'opacity-100' : 'opacity-0'}`} />
 
-          {/* Brand */}
-          <h1 className="order-1 flex-none md:justify-self-start text-base md:text-lg font-serif italic tracking-tighter text-google-dark leading-none whitespace-nowrap">
-            PRHOMZ <span className="text-google-blue not-italic font-sans font-black ml-0.5">AI DESIGNER</span>
+          {/* Brand — wordmark uses the landing-site display face (Playfair Display
+              in the brand theme); clicking it returns to the Remodel home. */}
+          <h1 className="order-1 flex-none md:justify-self-start text-base md:text-lg leading-none whitespace-nowrap">
+            <button
+              type="button"
+              onClick={() => { setCurrentMode(AppMode.REMODEL); setActiveEditImage(null); }}
+              className="font-display italic font-medium uppercase tracking-wide text-google-dark hover:opacity-80 transition-opacity cursor-pointer"
+              aria-label="PRHOMZ AI Designer — go to Remodel home"
+            >
+              PRHOMZ <span className="text-google-blue not-italic font-sans font-black tracking-tight ml-0.5">AI DESIGNER</span>
+            </button>
           </h1>
 
           {/* Top navigation menu (own row on mobile, centered on desktop) */}
