@@ -158,6 +158,10 @@ payment fails, or a P0 JS error on signup/generate. Roll back per §11.2.
 |---|---|---|
 | api image | v20 (rev api-00025-wn2) | v19 (rev api-00024-zfv) |
 | stripe-webhook image | v20 (rev stripe-webhook-00019-4dd) | v19 (rev stripe-webhook-00018-hf7) |
+| designer frontend (Hosting app) | v1.1.0 blue brand (git `b39bf97`, bundle `main-BUBBWikQ.js`) | pre-blue release (Firebase console rollback) |
+| landing image (Cloud Run `landing`) | v15 (rev landing-00026-voq) | v14 (rev landing-00023-tg8) |
+
+> **✅ v1.1.0 BLUE BRAND PRODUCTION LAUNCH (2026-08-11):** designer redesigned to the blue brand + stakeholder feedback (wordmark=Georgia italic, quota-reached upgrade card, red Renders pill, Shop-the-Look mobile new-tab, room-type dropdown, etc.) → built `VITE_THEME=brand` → `firebase deploy --only hosting:app`. Landing (`prhomzai.com`) updated: "How it works" boxes link to designer.prhomzai.com (new tab; demos preserved via stopPropagation) + membership synced to app (Freemium 30). Repos tagged `v1.1.0` (designer + landing). **Rollback:** designer → `npx firebase-tools hosting:rollback` (or Hosting console); landing → `gcloud run services update-traffic landing --to-revisions=landing-00023-tg8=100 --region us-central1`. Preview channels `green-design`/`brand-design` intentionally KEPT for the PWA/mobility round.
 
 > **v19–v20 (2026-08-06):** quota changes in `shared/tiers.ts` (backup `shared/tiers.ts.bak.quota` = pre-change state). v19: freemium daily→unlimited, monthly 10→30. v20: basic daily 5→unlimited (monthly 100 kept). **Revert:** restore the backup → rebuild → redeploy api+stripe-webhook to the previous images above, OR rebuild a fresh tag with reverted config.
 
