@@ -158,8 +158,21 @@ payment fails, or a P0 JS error on signup/generate. Roll back per §11.2.
 |---|---|---|
 | api image | v20 (rev api-00025-wn2) | v19 (rev api-00024-zfv) |
 | stripe-webhook image | v20 (rev stripe-webhook-00019-4dd) | v19 (rev stripe-webhook-00018-hf7) |
-| designer frontend (Hosting app) | v1.1.0 blue brand (git `b39bf97`, bundle `main-BUBBWikQ.js`) | pre-blue release (Firebase console rollback) |
+| designer frontend (Hosting app) | v1.2.0 PWA/mobility (git `9eedba4`, bundle `main-BbP5QfAJ.js`) | v1.1.0 blue brand (git `b39bf97`, `main-BUBBWikQ.js`) — `npx firebase-tools hosting:rollback` |
 | landing image (Cloud Run `landing`) | v15 (rev landing-00026-voq) | v14 (rev landing-00023-tg8) |
+
+> **✅ v1.2.0 PWA / MOBILITY PRODUCTION LAUNCH (2026-08-22):** designer app is now an
+> **installable PWA** (vite-plugin-pwa: manifest + `autoUpdate` service worker + icons incl.
+> maskable). Adds: always-visible **"Install app"** button (login + header; native prompt on
+> Android/desktop, per-browser steps otherwise), **iOS guided Add-to-Home-Screen banner** +
+> `apple-mobile-web-app` full-screen meta, **in-app camera** (getUserMedia, orientation-stable on
+> iOS) replacing the flaky OS capture, **room-type custom dropdown** (native `<select>` was
+> unreliable on iPhone), and signup **default country "United States"** + pinned common countries.
+> `firebase.json` gained `no-cache` headers for `sw.js`/`registerSW.js`/`workbox-*.js`/`manifest`.
+> **Frontend-only** — landing + backend untouched. Built `VITE_THEME=brand` → `firebase deploy
+> --only hosting:app`. Repo tagged `v1.2.0` (git `9eedba4`). **Rollback:** `npx firebase-tools
+> hosting:rollback` (instant → v1.1.0 `main-BUBBWikQ.js`), or Firebase console → Release history.
+> Existing users get the new version automatically via the service worker on next load.
 
 > **✅ v1.1.0 BLUE BRAND PRODUCTION LAUNCH (2026-08-11):** designer redesigned to the blue brand + stakeholder feedback (wordmark=Georgia italic, quota-reached upgrade card, red Renders pill, Shop-the-Look mobile new-tab, room-type dropdown, etc.) → built `VITE_THEME=brand` → `firebase deploy --only hosting:app`. Landing (`prhomzai.com`) updated: "How it works" boxes link to designer.prhomzai.com (new tab; demos preserved via stopPropagation) + membership synced to app (Freemium 30). Repos tagged `v1.1.0` (designer + landing). **Rollback:** designer → `npx firebase-tools hosting:rollback` (or Hosting console); landing → `gcloud run services update-traffic landing --to-revisions=landing-00023-tg8=100 --region us-central1`. Preview channels `green-design`/`brand-design` intentionally KEPT for the PWA/mobility round.
 
