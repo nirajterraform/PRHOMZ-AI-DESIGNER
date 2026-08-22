@@ -178,6 +178,70 @@ payment fails, or a P0 JS error on signup/generate. Roll back per §11.2.
 
 ---
 
+## Email deliverability (SendGrid) — known issue + procedures
+
+Firebase Auth verification / reset emails send via **SendGrid** from `noreply@prhomzai.com`.
+A verified user must have Firebase Auth `emailVerified=true` to log in (gate in `App.tsx`:
+`if (!authUser || !authUser.emailVerified)`).
+
+### ⚠️ Incident 2026-08-16 — Microsoft (Hotmail/Outlook/Live) blocking our emails
+**Symptom:** user `swapnil_c@hotmail.com` never received the verification email → could not log in.
+
+**Root cause (confirmed via SendGrid suppression + Email Activity):** Microsoft **hard-rejected**
+the mail (not spam-foldered) — SendGrid's **shared sending IP `149.72.120.130`** is on Microsoft's
+block list:
+```
+550 5.7.1 ... messages from [149.72.120.130] weren't sent ... on our block list (S3140)
+```
+Both attempts logged `not_delivered`; the address was auto-added to SendGrid's **blocks** suppression
+list (so SendGrid stops retrying). Affects **all** Microsoft-domain recipients (hotmail/outlook/live/msn),
+not just one user. Gmail etc. unaffected — which is why it went unnoticed.
+
+**Contributing factor we control:** `prhomzai.com` has **no SPF record** (DKIM ✅ via SendGrid CNAMEs
+`s1/s2._domainkey`; DMARC exists but `p=none`, `rua` → GoDaddy default mailbox). Missing SPF weakens
+Microsoft standing.
+
+**Immediate fix applied:** manually set `emailVerified=true` for the affected account (see procedure
+below) so the user could log in without the email.
+
+**Pending remediation (systemic — do these to actually fix Microsoft delivery):**
+- [ ] **Add SPF** TXT on `prhomzai.com` (GoDaddy DNS): `v=spf1 include:sendgrid.net ~all`
+      (add `include:zoho.com` if Zoho also sends mail — a `zoho-verification` TXT exists on the domain).
+- [ ] **SendGrid support ticket** to delist shared IP `149.72.120.130` from Microsoft (S3140) / move to a clean IP.
+- [ ] Remove affected addresses from SendGrid **blocks** suppression list once IP is clean.
+- [ ] Enroll domain/IP in **Microsoft SNDS + JMRP**; consider a **dedicated IP** (with warm-up) if MS volume matters.
+- [ ] After SPF+DKIM aligned, tighten **DMARC** to `p=quarantine` with a monitored `rua`.
+
+### Procedure — manually verify a user's email (unblock login without the email)
+Read-only lookup + the admin update use the Identity Toolkit API with the caller's gcloud token.
+**Note the `x-goog-user-project` header** — required, else 403 `accessNotConfigured`.
+```bash
+unset GOOGLE_IMPERSONATE_SERVICE_ACCOUNT
+TOKEN=$(gcloud auth print-access-token)
+PROJECT=prhomzmvp-nonprod
+LOCALID=<firebase-auth-uid>          # NOT the shell-reserved name UID
+BASE="https://identitytoolkit.googleapis.com/v1/projects/$PROJECT"
+H=(-H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "x-goog-user-project: $PROJECT")
+# confirm current state:
+curl -s -X POST "$BASE/accounts:lookup" "${H[@]}" -d "{\"localId\":[\"$LOCALID\"]}"
+# set verified:
+curl -s -X POST "$BASE/accounts:update" "${H[@]}" -d "{\"localId\":\"$LOCALID\",\"emailVerified\":true}"
+```
+Find a user's uid by email: `npx firebase-tools auth:export tmp.json --format=json --project prhomzmvp-nonprod`
+then grep (delete the export after — it contains PII/password hashes).
+
+### Diagnose deliverability for an address (SendGrid — key stays server-side, never echo it)
+```bash
+KEY=$(gcloud secrets versions access latest --secret=sendgrid-api-key --project=prhomzmvp-nonprod)
+for L in bounces blocks invalid_emails spam_reports; do
+  echo "== $L =="; curl -s -H "Authorization: Bearer $KEY" "https://api.sendgrid.com/v3/suppression/$L/<email>"; echo
+done
+# recent activity (if Email Activity is enabled on the plan):
+curl -s -H "Authorization: Bearer $KEY" "https://api.sendgrid.com/v3/messages?query=to_email%3D%22<email>%22&limit=10"
+```
+
+---
+
 ## Scheduled jobs (Cloud Scheduler)
 
 | Job | Schedule (UTC) | Hits |

@@ -23,6 +23,12 @@
           "headers": [
             { "key": "Cache-Control", "value": "no-cache" }
           ]
+        },
+        {
+          "source": "**/@(sw.js|registerSW.js|workbox-*.js|manifest.webmanifest)",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache" }
+          ]
         }
       ]
     },

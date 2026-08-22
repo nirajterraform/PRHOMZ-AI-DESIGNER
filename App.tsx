@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigation } from './components/Navigation';
+import { PwaInstallButton } from './components/PwaInstallButton';
+import { IosInstallBanner } from './components/IosInstallBanner';
 import { Remodeler } from './components/Remodeler';
 import { Assistant } from './components/Assistant';
 import { Gallery } from './components/Gallery';
@@ -28,7 +30,12 @@ function App() {
     if (window.location.pathname === '/__mock-checkout') return <MockCheckout />;
     if (window.location.pathname === '/__mock-portal') return <MockPortal />;
   }
-  return <MainApp />;
+  return (
+    <>
+      <MainApp />
+      <IosInstallBanner />
+    </>
+  );
 }
 
 function MainApp() {
@@ -296,6 +303,7 @@ function MainApp() {
           </div>
 
           <div className="order-2 md:order-3 ml-auto md:ml-0 md:justify-self-end flex items-center space-x-3">
+            <PwaInstallButton />
             <div
               className="relative md:pl-6 md:border-l border-google-border flex items-center space-x-3 group cursor-pointer"
               onClick={() => setIsProfileOpen(!isProfileOpen)}

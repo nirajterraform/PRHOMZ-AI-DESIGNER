@@ -1,12 +1,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Download, ShoppingBag, Plus, Wand2, RefreshCcw, Star, Clock, Zap, MoveHorizontal } from 'lucide-react';
+import { Download, ShoppingBag, Plus, Wand2, RefreshCcw, Star, Clock, Zap, MoveHorizontal, Camera, Upload, ChevronDown } from 'lucide-react';
 import { remodelImage } from '../services/geminiService';
 import { saveProductsToImage } from '../services/galleryService';
 import { downloadImage } from '../services/downloadImage';
 import { GeneratedImage, DESIGN_PRESETS, UserAccount } from '../types';
 import { Button } from './Button';
 import { ShopLookModal } from './ShopLookModal';
+import { CameraCapture } from './CameraCapture';
 import { FeedbackForm } from './FeedbackForm';
 import { PreRenderWarningModal } from './PreRenderWarningModal';
 import { QuotaExceededModal, type QuotaExceededReason } from './QuotaExceededModal';
@@ -79,6 +80,8 @@ export const Remodeler: React.FC<RemodelerProps> = ({
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [roomOpen, setRoomOpen] = useState(false);
   const timerIntervalRef = useRef<number | null>(null);
   const comparedRef = useRef(false);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -188,20 +191,21 @@ export const Remodeler: React.FC<RemodelerProps> = ({
     onNavigateToPricing?.();
   };
 
+  const handleFile = (file: File) => {
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setPreviewUrl(ev.target?.result as string);
+      setResultImage(null);
+      setGenerationTime(null);
+      setHistoricalView(null);
+      if (onClearInitial) onClearInitial();
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setPreviewUrl(ev.target?.result as string);
-        setResultImage(null);
-        setGenerationTime(null);
-        setHistoricalView(null);
-        if (onClearInitial) onClearInitial();
-      };
-      reader.readAsDataURL(file);
-    }
+    if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
   };
 
   const handleRemodel = async () => {
@@ -315,6 +319,9 @@ export const Remodeler: React.FC<RemodelerProps> = ({
 
   return (
     <div className="w-full animate-fade">
+      {cameraOpen && (
+        <CameraCapture onCapture={handleFile} onClose={() => setCameraOpen(false)} />
+      )}
       <header className="mb-2 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg md:text-xl font-serif text-google-dark leading-tight">
@@ -375,15 +382,43 @@ export const Remodeler: React.FC<RemodelerProps> = ({
             {/* project meta — room type (becomes the gallery design title) */}
             <div className="space-y-1.5">
               <p className="text-[10px] font-bold text-google-gray uppercase tracking-wider">Project · Room Type</p>
-              <select
-                value={roomType}
-                disabled={isQuotaReached}
-                onChange={(e) => setRoomType(e.target.value)}
-                className={`w-full bg-google-bg border border-google-border rounded-xl px-3 py-2 text-sm text-google-dark focus:ring-2 focus:ring-google-blue focus:outline-none cursor-pointer ${isQuotaReached ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <option value="">Select a room…</option>
-                {ROOM_TYPES.map((rt) => <option key={rt} value={rt}>{rt}</option>)}
-              </select>
+              {/* Custom dropdown (not a native <select>) for consistent behavior on
+                  iOS + Android — the native select's arrow/tap was unreliable on iPhone. */}
+              <div className="relative">
+                <button
+                  type="button"
+                  disabled={isQuotaReached}
+                  onClick={() => setRoomOpen((o) => !o)}
+                  aria-haspopup="listbox"
+                  aria-expanded={roomOpen}
+                  className={`w-full flex items-center justify-between gap-2 bg-google-bg border border-google-border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-google-blue focus:outline-none ${roomType ? 'text-google-dark' : 'text-google-gray'} ${isQuotaReached ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <span className="truncate">{roomType || 'Select a room…'}</span>
+                  <ChevronDown className={`w-4 h-4 flex-none text-google-gray transition-transform ${roomOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {roomOpen && !isQuotaReached && (
+                  <>
+                    {/* tap-away backdrop closes the menu */}
+                    <div className="fixed inset-0 z-40" onClick={() => setRoomOpen(false)} />
+                    <ul
+                      role="listbox"
+                      className="absolute z-50 mt-1 w-full max-h-56 overflow-auto bg-google-surface border border-google-border rounded-xl shadow-2xl py-1"
+                    >
+                      {ROOM_TYPES.map((rt) => (
+                        <li key={rt} role="option" aria-selected={rt === roomType}>
+                          <button
+                            type="button"
+                            onClick={() => { setRoomType(rt); setRoomOpen(false); }}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-google-blue/10 transition-colors ${rt === roomType ? 'text-google-blue font-semibold' : 'text-google-dark'}`}
+                          >
+                            {rt}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* square upload — extends down to use the available space */}
@@ -410,6 +445,24 @@ export const Remodeler: React.FC<RemodelerProps> = ({
                       <Plus className="w-4 h-4 text-google-blue" />
                     </div>
                     <p className="text-xs font-medium text-google-gray">Add a photo <span className="text-google-gray/60">· or drag here</span></p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <button
+                        type="button"
+                        disabled={isQuotaReached}
+                        onClick={(e) => { e.stopPropagation(); setCameraOpen(true); }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-google-blue text-google-bg text-xs font-semibold hover:opacity-90 transition-opacity"
+                      >
+                        <Camera className="w-3.5 h-3.5" /> Take Photo
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isQuotaReached}
+                        onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-google-border text-google-dark text-xs font-semibold hover:bg-google-surface transition-colors"
+                      >
+                        <Upload className="w-3.5 h-3.5" /> Upload
+                      </button>
+                    </div>
                   </>
                 )}
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
