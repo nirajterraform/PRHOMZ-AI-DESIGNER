@@ -1,11 +1,19 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { findMatchingInventory } from "./lib/shopify";
+import { findMatchingInventory, ProductSource } from "./lib/shopify";
 import { ApiError } from "./lib/apiError";
 
 export interface ProxySwapProductInput {
   base64Image?: string;
-  currentProduct?: { name?: string };
+  currentProduct?: { name?: string; price?: number };
+  /**
+   * The marketplace the user picked in Shop the Look. Must match the source the
+   * original list was generated against, or the swapped item gets a "Buy on
+   * Amazon" button pointing at a different store. Older clients omit it.
+   */
+  source?: ProductSource;
 }
+
+const VALID_SOURCES: ProductSource[] = ["PRHOMZ", "Amazon", "Wayfair", "IKEA"];
 
 interface SwapItem {
   id: string;
@@ -30,6 +38,15 @@ export async function handleProxySwapProduct(
   if (!base64Image || !currentProduct?.name) {
     throw new ApiError("invalid-argument", "base64Image and currentProduct.name required.");
   }
+  const source: ProductSource = VALID_SOURCES.includes(input?.source as ProductSource)
+    ? (input!.source as ProductSource)
+    : "PRHOMZ";
+  const currentPrice =
+    typeof currentProduct.price === "number" &&
+    Number.isFinite(currentProduct.price) &&
+    currentProduct.price > 0
+      ? currentProduct.price
+      : undefined;
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new ApiError("internal", "GEMINI_API_KEY not configured.");
@@ -40,6 +57,20 @@ export async function handleProxySwapProduct(
     base64Image.substring(base64Image.indexOf(":") + 1, base64Image.indexOf(";")) ||
     "image/jpeg";
 
+  // Mirrors the wording used by the initial scan so a swapped item stays in the
+  // same catalogue the user is shopping from.
+  const sourceInstruction =
+    source === "PRHOMZ"
+      ? " Focus on high-end Atelier pieces and artisan decor."
+      : ` The alternative must be an item commonly available on ${source}.com and matching the ${source} inventory catalog. Do not suggest an item that is only sold elsewhere.`;
+
+  // Keep the swap in the same price band as the piece it replaces, otherwise a
+  // single swap can push the curation total well past the user's budget or
+  // gut it.
+  const priceInstruction = currentPrice
+    ? ` The piece being replaced costs $${Math.round(currentPrice).toLocaleString("en-US")}; price the alternative within roughly 75%-125% of that so the overall budget holds. Keep the price realistic for the item.`
+    : "";
+
   let response;
   try {
     response = await ai.models.generateContent({
@@ -48,7 +79,7 @@ export async function handleProxySwapProduct(
         parts: [
           { inlineData: { data: base64Data, mimeType } },
           {
-            text: `Suggest an alternative piece for "${currentProduct.name}". Return name, description, price (USD), colors.`,
+            text: `Suggest an alternative piece for "${currentProduct.name}" (SOURCE: ${source}).${sourceInstruction}${priceInstruction} Return name, description, price (USD), colors.`,
           },
         ],
       },
@@ -78,7 +109,7 @@ export async function handleProxySwapProduct(
     colors: string[];
   };
 
-  const match = findMatchingInventory(item.name, "PRHOMZ");
+  const match = findMatchingInventory(item.name, source);
 
   return {
     product: {

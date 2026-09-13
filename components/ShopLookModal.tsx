@@ -140,7 +140,7 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
     if (!productToSwap) return;
     setSwappingIds(prev => new Set(prev).add(productId));
     try {
-      const newProduct = await swapProduct(image, productToSwap);
+      const newProduct = await swapProduct(image, productToSwap, source ?? undefined);
       setProducts(prev => prev.map(p => p.id === productId ? newProduct : p));
     } catch (error) { 
       console.error("Swap failed", error); 

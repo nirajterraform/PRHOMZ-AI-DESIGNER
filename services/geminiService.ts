@@ -102,14 +102,20 @@ export const searchCatalog = async (query: string): Promise<ProductItem[]> => {
 export const swapProduct = async (
   image: string,
   currentProduct: ProductItem,
+  source: ProductSource = "PRHOMZ",
 ): Promise<ProductItem> => {
   const base64Image = await toBase64DataUrl(image);
   const result = await apiPost<
-    { base64Image: string; currentProduct: { name: string } },
+    {
+      base64Image: string;
+      currentProduct: { name: string; price: number };
+      source: ProductSource;
+    },
     { product: ProductItem }
   >("/proxySwapProduct", {
     base64Image,
-    currentProduct: { name: currentProduct.name },
+    currentProduct: { name: currentProduct.name, price: currentProduct.price },
+    source,
   });
   return result.product;
 };
