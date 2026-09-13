@@ -20,6 +20,18 @@ interface GalleryProps {
   onNavigateToPricing?: () => void;
 }
 
+// Remodeler records the slider value in the generation prompt as
+// "Budget Target: $17000". Recovering it here keeps a Shop the Look opened from
+// the Gallery on the budget the design was actually generated with, instead of
+// the arbitrary $5,000 that used to be hardcoded at the call site and silently
+// truncated every list above it. Undefined means "no cap", not "$5,000".
+const budgetFromPrompt = (prompt?: string): number | undefined => {
+  const match = /Budget Target:\s*\$([\d,]+)/i.exec(prompt || '');
+  if (!match) return undefined;
+  const value = Number(match[1].replace(/,/g, ''));
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+};
+
 const TIER_LABEL: Record<UserTier, string> = {
   freemium: 'Freemium',
   basic: 'Basic',
@@ -440,7 +452,7 @@ export const Gallery: React.FC<GalleryProps> = ({ images, onEdit, tier, isLoadin
         <ShopLookModal
           image={shoppingImage.url}
           isOpen={!!shoppingImage}
-          budget={5000}
+          budget={budgetFromPrompt(shoppingImage.prompt)}
           onClose={() => setShoppingImage(null)}
           onSaveProducts={async (products) => {
             const uid = auth.currentUser?.uid;

@@ -68,13 +68,14 @@ export const chatWithDesigner = async (
 export const generateProductList = async (
   image: string,
   source: ProductSource = "PRHOMZ",
+  budget?: number,
 ): Promise<ProductItem[]> => {
   const base64Image = await toBase64DataUrl(image);
   try {
     const result = await apiPost<
-      { base64Image: string; source: ProductSource },
+      { base64Image: string; source: ProductSource; budget?: number },
       { products: ProductItem[] }
-    >("/proxyGenerateProductList", { base64Image, source });
+    >("/proxyGenerateProductList", { base64Image, source, budget });
     return result.products;
   } catch (error) {
     // Let the region block propagate so the UI can message it clearly; all

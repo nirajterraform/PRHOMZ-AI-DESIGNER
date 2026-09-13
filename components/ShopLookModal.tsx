@@ -70,7 +70,7 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
     startTimer();
     
     try {
-      const items = await generateProductList(image, selectedSource);
+      const items = await generateProductList(image, selectedSource, budget);
       stopTimer();
       setAnalysisTime(activeTimer);
       setProducts(items);
@@ -90,16 +90,28 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
     }
   };
 
+  // The scan is already budget-aware (the target is sent to the model), so this
+  // is only a safety net for the case where it overshoots. It walks the list
+  // most-expensive-first so the big anchor pieces — sofa, bed, rug — survive and
+  // the cheap decor is what gets dropped; the previous version walked the list
+  // in whatever order the model returned it, which could keep three cushions and
+  // drop the sofa. Display order is preserved.
   const budgetCompliantProducts = useMemo(() => {
     if (budget === undefined || budget === 0) return products;
+    const total = products.reduce((sum, p) => sum + p.price, 0);
+    if (total <= budget) return products;
+
     let runningTotal = 0;
-    return products.filter(product => {
-      if (runningTotal + product.price <= budget) {
-        runningTotal += product.price;
-        return true;
-      }
-      return false;
-    });
+    const kept = new Set<string>();
+    [...products]
+      .sort((a, b) => b.price - a.price)
+      .forEach(product => {
+        if (runningTotal + product.price <= budget) {
+          runningTotal += product.price;
+          kept.add(product.id);
+        }
+      });
+    return products.filter(product => kept.has(product.id));
   }, [products, budget]);
 
   const handleColorSelect = (productId: string, color: string) => {
@@ -391,7 +403,15 @@ export const ShopLookModal: React.FC<ShopLookModalProps> = ({ image, isOpen, onC
                           <span className="text-[10px] font-black uppercase">Predicted {source} Prices</span>
                         </div>
                       </div>
-                      <span className="text-3xl font-black text-google-dark">${currentTotal.toLocaleString()}</span>
+                      <div className="flex items-baseline flex-wrap gap-x-2">
+                        <span className="text-3xl font-black text-google-dark">${currentTotal.toLocaleString()}</span>
+                        {budget !== undefined && budget > 0 && (
+                          <span className="text-xs font-bold text-google-gray">
+                            of ${budget.toLocaleString()} budget
+                            {currentTotal < budget && ` · $${(budget - currentTotal).toLocaleString()} left`}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center space-x-4">
                        <p className="text-xs text-google-gray font-medium max-w-[200px] text-right hidden lg:block leading-tight">

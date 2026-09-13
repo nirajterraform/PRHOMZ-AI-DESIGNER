@@ -5,6 +5,24 @@ import { ApiError } from "./lib/apiError";
 export interface ProxyGenerateProductListInput {
   base64Image?: string;
   source?: ProductSource;
+  /**
+   * The user's total furnishing budget in USD, from the Remodeler slider.
+   * Optional: older clients omit it, in which case the scan behaves as before
+   * (generic price estimates with no budget target).
+   */
+  budget?: number;
+}
+
+// The Remodeler slider spans $500–$50,000. Accept a little beyond that so the
+// range can widen without a backend change, but reject anything that isn't a
+// sane positive amount before it reaches the prompt.
+const MIN_BUDGET = 100;
+const MAX_BUDGET = 1_000_000;
+
+function normaliseBudget(raw: unknown): number | undefined {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return undefined;
+  if (raw < MIN_BUDGET || raw > MAX_BUDGET) return undefined;
+  return Math.round(raw);
 }
 
 interface ProductItem {
@@ -30,6 +48,7 @@ export async function handleProxyGenerateProductList(
   if (!base64Image) {
     throw new ApiError("invalid-argument", "base64Image required.");
   }
+  const budget = normaliseBudget(input?.budget);
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new ApiError("internal", "GEMINI_API_KEY not configured.");
@@ -45,6 +64,17 @@ export async function handleProxyGenerateProductList(
       ? "Focus on high-end Atelier pieces and artisan decor."
       : `Strictly identify items that are commonly available on ${source}.com. Identify items that match the inventory catalog of ${source}.`;
 
+  // Without this the model prices every room the same way (~$2-3k of generic
+  // mid-range goods) regardless of what the user picked on the slider, so the
+  // budget appeared to do nothing. Give it the target explicitly and ask it to
+  // pick pieces at the matching quality level — never to inflate prices, which
+  // would make the estimates useless against the real storefront.
+  const budgetInstruction = budget
+    ? ` BUDGET TARGET: the user has allocated $${budget.toLocaleString("en-US")} USD in total for furnishing this room. Select the specific pieces and quality tier so the sum of all item prices lands between 85% and 100% of that budget ($${Math.round(
+        budget * 0.85,
+      ).toLocaleString("en-US")}–$${budget.toLocaleString("en-US")}). For a larger budget choose genuinely higher-end designer or premium pieces and price them at their real retail value; for a smaller budget choose value alternatives. Do NOT inflate the price of a cheap item to fill the budget, and do NOT pad the list with filler decor — change which pieces you recommend instead. Prices must remain realistic for what that item actually sells for.`
+    : "";
+
   let response;
   try {
     response = await ai.models.generateContent({
@@ -53,7 +83,7 @@ export async function handleProxyGenerateProductList(
         parts: [
           { inlineData: { data: base64Data, mimeType } },
           {
-            text: `EXHAUSTIVE INTERIOR ARTIFACT SCAN (SOURCE: ${source}): ${sourceInstruction} Identify all pieces of furniture, lighting, and decor. Provide 'name', 'description', and 'price' (USD). Be very specific about brands or styles shown.`,
+            text: `EXHAUSTIVE INTERIOR ARTIFACT SCAN (SOURCE: ${source}): ${sourceInstruction} Identify all pieces of furniture, lighting, and decor. Provide 'name', 'description', and 'price' (USD). Be very specific about brands or styles shown.${budgetInstruction}`,
           },
         ],
       },
@@ -107,6 +137,21 @@ export async function handleProxyGenerateProductList(
           inventoryMatch.shopifyId !== "external_referral" &&
           !inventoryMatch.shopifyId.startsWith("external_"),
       };
+    }),
+  );
+
+  // Observability for the budget fix: lets us confirm from Cloud Logging that
+  // the slider value reached the model and how close the returned list landed.
+  const scanTotal = productsWithMatches.reduce((sum, p) => sum + (p.price || 0), 0);
+  console.log(
+    JSON.stringify({
+      severity: "INFO",
+      event: "product_scan_complete",
+      source,
+      budget: budget ?? null,
+      items: productsWithMatches.length,
+      scanTotal,
+      budgetUsedPct: budget ? Math.round((scanTotal / budget) * 100) : null,
     }),
   );
 
