@@ -156,8 +156,27 @@ payment fails, or a P0 JS error on signup/generate. Roll back per §11.2.
 
 | Component | Current | Previous (rollback) |
 |---|---|---|
-| api image | v18 (rev api-00023-5wd) | v17 (rev api-00022-d8m) |
-| stripe-webhook image | v18 (rev stripe-webhook-00015-4gm) | v17 (rev stripe-webhook-00014-gfc) |
+| api image | v20 (rev api-00025-wn2) | v19 (rev api-00024-zfv) |
+| stripe-webhook image | v20 (rev stripe-webhook-00019-4dd) | v19 (rev stripe-webhook-00018-hf7) |
+| designer frontend (Hosting app) | v1.2.0 PWA/mobility (git `9eedba4`, bundle `main-BbP5QfAJ.js`) | v1.1.0 blue brand (git `b39bf97`, `main-BUBBWikQ.js`) — `npx firebase-tools hosting:rollback` |
+| landing image (Cloud Run `landing`) | v15 (rev landing-00026-voq) | v14 (rev landing-00023-tg8) |
+
+> **✅ v1.2.0 PWA / MOBILITY PRODUCTION LAUNCH (2026-08-22):** designer app is now an
+> **installable PWA** (vite-plugin-pwa: manifest + `autoUpdate` service worker + icons incl.
+> maskable). Adds: always-visible **"Install app"** button (login + header; native prompt on
+> Android/desktop, per-browser steps otherwise), **iOS guided Add-to-Home-Screen banner** +
+> `apple-mobile-web-app` full-screen meta, **in-app camera** (getUserMedia, orientation-stable on
+> iOS) replacing the flaky OS capture, **room-type custom dropdown** (native `<select>` was
+> unreliable on iPhone), and signup **default country "United States"** + pinned common countries.
+> `firebase.json` gained `no-cache` headers for `sw.js`/`registerSW.js`/`workbox-*.js`/`manifest`.
+> **Frontend-only** — landing + backend untouched. Built `VITE_THEME=brand` → `firebase deploy
+> --only hosting:app`. Repo tagged `v1.2.0` (git `9eedba4`). **Rollback:** `npx firebase-tools
+> hosting:rollback` (instant → v1.1.0 `main-BUBBWikQ.js`), or Firebase console → Release history.
+> Existing users get the new version automatically via the service worker on next load.
+
+> **✅ v1.1.0 BLUE BRAND PRODUCTION LAUNCH (2026-08-11):** designer redesigned to the blue brand + stakeholder feedback (wordmark=Georgia italic, quota-reached upgrade card, red Renders pill, Shop-the-Look mobile new-tab, room-type dropdown, etc.) → built `VITE_THEME=brand` → `firebase deploy --only hosting:app`. Landing (`prhomzai.com`) updated: "How it works" boxes link to designer.prhomzai.com (new tab; demos preserved via stopPropagation) + membership synced to app (Freemium 30). Repos tagged `v1.1.0` (designer + landing). **Rollback:** designer → `npx firebase-tools hosting:rollback` (or Hosting console); landing → `gcloud run services update-traffic landing --to-revisions=landing-00023-tg8=100 --region us-central1`. Preview channels `green-design`/`brand-design` intentionally KEPT for the PWA/mobility round.
+
+> **v19–v20 (2026-08-06):** quota changes in `shared/tiers.ts` (backup `shared/tiers.ts.bak.quota` = pre-change state). v19: freemium daily→unlimited, monthly 10→30. v20: basic daily 5→unlimited (monthly 100 kept). **Revert:** restore the backup → rebuild → redeploy api+stripe-webhook to the previous images above, OR rebuild a fresh tag with reverted config.
 
 > **✅ Terraform reconciled (2026-07-24):** the SendGrid env/secret/IAM and the alert-channel
 > changes are now codified. `sendgrid-api-key` secret + `runtime_sendgrid` IAM + `SENDGRID_API_KEY`
@@ -169,6 +188,70 @@ payment fails, or a P0 JS error on signup/generate. Roll back per §11.2.
 > `multi_tenant` blocks (pre-existing drift; does NOT touch SendGrid SMTP or authorized domains).
 > **Safe to `terraform apply`.** Note: `prhomzai.finance` channel is intentionally NOT in `alert_emails`
 > (reserved for the billing budget, not operational alerts).
+
+---
+
+## Email deliverability (SendGrid) — known issue + procedures
+
+Firebase Auth verification / reset emails send via **SendGrid** from `noreply@prhomzai.com`.
+A verified user must have Firebase Auth `emailVerified=true` to log in (gate in `App.tsx`:
+`if (!authUser || !authUser.emailVerified)`).
+
+### ⚠️ Incident 2026-08-16 — Microsoft (Hotmail/Outlook/Live) blocking our emails
+**Symptom:** user `swapnil_c@hotmail.com` never received the verification email → could not log in.
+
+**Root cause (confirmed via SendGrid suppression + Email Activity):** Microsoft **hard-rejected**
+the mail (not spam-foldered) — SendGrid's **shared sending IP `149.72.120.130`** is on Microsoft's
+block list:
+```
+550 5.7.1 ... messages from [149.72.120.130] weren't sent ... on our block list (S3140)
+```
+Both attempts logged `not_delivered`; the address was auto-added to SendGrid's **blocks** suppression
+list (so SendGrid stops retrying). Affects **all** Microsoft-domain recipients (hotmail/outlook/live/msn),
+not just one user. Gmail etc. unaffected — which is why it went unnoticed.
+
+**Contributing factor we control:** `prhomzai.com` has **no SPF record** (DKIM ✅ via SendGrid CNAMEs
+`s1/s2._domainkey`; DMARC exists but `p=none`, `rua` → GoDaddy default mailbox). Missing SPF weakens
+Microsoft standing.
+
+**Immediate fix applied:** manually set `emailVerified=true` for the affected account (see procedure
+below) so the user could log in without the email.
+
+**Pending remediation (systemic — do these to actually fix Microsoft delivery):**
+- [ ] **Add SPF** TXT on `prhomzai.com` (GoDaddy DNS): `v=spf1 include:sendgrid.net ~all`
+      (add `include:zoho.com` if Zoho also sends mail — a `zoho-verification` TXT exists on the domain).
+- [ ] **SendGrid support ticket** to delist shared IP `149.72.120.130` from Microsoft (S3140) / move to a clean IP.
+- [ ] Remove affected addresses from SendGrid **blocks** suppression list once IP is clean.
+- [ ] Enroll domain/IP in **Microsoft SNDS + JMRP**; consider a **dedicated IP** (with warm-up) if MS volume matters.
+- [ ] After SPF+DKIM aligned, tighten **DMARC** to `p=quarantine` with a monitored `rua`.
+
+### Procedure — manually verify a user's email (unblock login without the email)
+Read-only lookup + the admin update use the Identity Toolkit API with the caller's gcloud token.
+**Note the `x-goog-user-project` header** — required, else 403 `accessNotConfigured`.
+```bash
+unset GOOGLE_IMPERSONATE_SERVICE_ACCOUNT
+TOKEN=$(gcloud auth print-access-token)
+PROJECT=prhomzmvp-nonprod
+LOCALID=<firebase-auth-uid>          # NOT the shell-reserved name UID
+BASE="https://identitytoolkit.googleapis.com/v1/projects/$PROJECT"
+H=(-H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "x-goog-user-project: $PROJECT")
+# confirm current state:
+curl -s -X POST "$BASE/accounts:lookup" "${H[@]}" -d "{\"localId\":[\"$LOCALID\"]}"
+# set verified:
+curl -s -X POST "$BASE/accounts:update" "${H[@]}" -d "{\"localId\":\"$LOCALID\",\"emailVerified\":true}"
+```
+Find a user's uid by email: `npx firebase-tools auth:export tmp.json --format=json --project prhomzmvp-nonprod`
+then grep (delete the export after — it contains PII/password hashes).
+
+### Diagnose deliverability for an address (SendGrid — key stays server-side, never echo it)
+```bash
+KEY=$(gcloud secrets versions access latest --secret=sendgrid-api-key --project=prhomzmvp-nonprod)
+for L in bounces blocks invalid_emails spam_reports; do
+  echo "== $L =="; curl -s -H "Authorization: Bearer $KEY" "https://api.sendgrid.com/v3/suppression/$L/<email>"; echo
+done
+# recent activity (if Email Activity is enabled on the plan):
+curl -s -H "Authorization: Bearer $KEY" "https://api.sendgrid.com/v3/messages?query=to_email%3D%22<email>%22&limit=10"
+```
 
 ---
 

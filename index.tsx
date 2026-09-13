@@ -5,6 +5,17 @@ import './index.css';
 import App from './App';
 import { initSentry } from './services/sentry';
 
+// Theme selection (build-time): VITE_THEME=brand → live brand palette (blue/dark, Inter);
+// anything else → the green editorial theme (default). Drives the CSS token overrides
+// in index.css via the root [data-theme] attribute. Same UI either way.
+const THEME = ((import.meta.env as Record<string, string | undefined>).VITE_THEME === 'brand')
+  ? 'brand'
+  : 'green';
+document.documentElement.setAttribute('data-theme', THEME);
+document
+  .querySelector('meta[name="theme-color"]')
+  ?.setAttribute('content', THEME === 'brand' ? '#04080f' : '#1B221D');
+
 // Start error tracking as early as possible (no-op until VITE_SENTRY_DSN is set).
 initSentry();
 

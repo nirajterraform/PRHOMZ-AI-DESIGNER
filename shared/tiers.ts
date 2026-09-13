@@ -8,8 +8,10 @@ export const RETENTION_DAYS_BY_TIER: Record<UserTier, number> = {
 };
 
 export const QUOTA_BY_TIER: Record<UserTier, { monthly: number; daily: number }> = {
-  freemium: { monthly: 10, daily: 2 },
-  basic: { monthly: 100, daily: 5 },
+  // Testing/feedback window: daily cap removed for freemium (unlimited/day),
+  // monthly raised 10 → 30 to keep a cost ceiling. Revert via tiers.ts.bak.quota.
+  freemium: { monthly: 30, daily: Number.POSITIVE_INFINITY },
+  basic: { monthly: 100, daily: Number.POSITIVE_INFINITY },
   advanced: { monthly: 300, daily: Number.POSITIVE_INFINITY },
   designer: { monthly: Number.POSITIVE_INFINITY, daily: Number.POSITIVE_INFINITY },
 };

@@ -1,18 +1,20 @@
 import type { GeneratedImage, UserTier } from "../types";
 
 /**
- * Per-tier visible-card caps in the Gallery. These are intentionally tied
- * to daily render limits (Freemium 2, Basic 5, both daily-limited tiers
- * unlimited daily) so users effectively see "their last batch" without
- * being limited by retention deletion alone.
+ * Per-tier visible-card caps in the Gallery.
+ *
+ * Testing/feedback window (2026-08-06): freemium + basic set to UNLIMITED
+ * visible designs so testers can see every iteration (matches the removed
+ * daily render caps). Previously freemium 2 / basic 5. Revert via
+ * gallerySlotsService.ts.bak.slots. Retention (server-side) is unchanged.
  *
  * Soft cap: when a user has more images than their cap allows, the
  * **newest N** are shown and the rest are hidden with an upgrade banner.
  * Nothing is deleted server-side — retention handles that on its own clock.
  */
 const SLOT_LIMITS: Record<UserTier, number> = {
-  freemium: 2,
-  basic: 5,
+  freemium: Number.POSITIVE_INFINITY,
+  basic: Number.POSITIVE_INFINITY,
   advanced: Number.POSITIVE_INFINITY,
   designer: Number.POSITIVE_INFINITY,
 };

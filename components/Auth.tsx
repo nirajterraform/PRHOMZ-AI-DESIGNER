@@ -15,6 +15,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "./Button";
+import { PwaInstallButton } from "./PwaInstallButton";
 import { signIn, signUp, sendReset, validatePassword, validateEmailFormat } from "../services/authService";
 import { TermsModal, type LegalDocKind } from "./TermsModal";
 import {
@@ -59,7 +60,7 @@ export const Auth: React.FC = () => {
   const [gender, setGender] = useState("");
   const [ageRange, setAgeRange] = useState("");
   const [zipCode, setZipCode] = useState("");
-  const [country, setCountry] = useState("");
+  const [country, setCountry] = useState("United States");
 
   const clearForm = () => {
     setEmail("");
@@ -179,6 +180,11 @@ export const Auth: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-[100] bg-google-bg overflow-y-auto font-sans">
+      {/* Install-app affordance for first-time visitors — the header pill only
+          exists once logged in, so surface it on the login screen too. */}
+      <div className="fixed top-4 right-4 z-[110]">
+        <PwaInstallButton />
+      </div>
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-google-blue/10 blur-[120px] rounded-full animate-pulse" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full" />
@@ -188,8 +194,8 @@ export const Auth: React.FC = () => {
       <div className="relative min-h-full flex items-center justify-center py-10 px-6">
        <div className="w-full max-w-xl animate-fade">
         <div className="text-center mb-12">
-          <h1 className="text-3xl md:text-4xl font-serif italic tracking-tighter text-google-dark mb-4 whitespace-nowrap">
-            PRHOMZ <span className="text-google-blue not-italic font-sans font-black">AI DESIGNER</span>
+          <h1 className="text-3xl md:text-4xl font-display italic font-medium uppercase tracking-wide text-google-dark mb-4 whitespace-nowrap">
+            PRHOMZ <span className="text-google-blue not-italic font-sans font-black tracking-tight">AI DESIGNER</span>
           </h1>
           <p className="text-google-gray text-sm font-bold uppercase tracking-[0.4em] opacity-80">
             Decor Design Delivered
@@ -552,7 +558,13 @@ const CountryField: React.FC<{ value: string; setValue: (v: string) => void }> =
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return COUNTRIES.slice(0, 60);
+    if (!q) {
+      // Surface the most common countries first so users don't have to scroll/type
+      // to the end of the alphabet (e.g. "United States").
+      const pinned = ["United States", "United Kingdom", "Canada", "Australia"].filter((c) => COUNTRIES.includes(c));
+      const rest = COUNTRIES.filter((c) => !pinned.includes(c));
+      return [...pinned, ...rest].slice(0, 60);
+    }
     return COUNTRIES.filter((c) => c.toLowerCase().includes(q)).slice(0, 60);
   }, [query]);
 
