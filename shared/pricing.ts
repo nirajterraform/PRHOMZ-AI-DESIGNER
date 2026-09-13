@@ -1,15 +1,34 @@
 import type { UserTier } from "./tiers";
 
 /**
- * Stripe Price IDs by tier. LIVE IDs from the PRHOMZ production Stripe business
- * account. Sourced from the Stripe Dashboard's Product catalog. Each Price is a
- * recurring monthly subscription priced in USD (Basic $9.99 / Advanced $19.99 /
- * Designer $49.99).
+ * Stripe Price IDs by tier. The defaults are the LIVE IDs from the PRHOMZ
+ * production Stripe business account (acct_1Tbvze…), each a recurring monthly
+ * subscription in USD (Basic $9.99 / Advanced $19.99 / Designer $49.99).
+ *
+ * Staging overrides these via STRIPE_PRICE_{BASIC,ADVANCED,DESIGNER} env vars,
+ * set on the Cloud Run services by Terraform, because it bills against a
+ * separate Stripe test sandbox with its own price IDs.
+ *
+ * These must stay env-driven rather than branch-specific constants: staging is
+ * promoted to prod by merging `staging` -> `main`, so hardcoding the sandbox IDs
+ * on the staging branch would ship test prices into production on the next merge.
+ * Prod sets none of these vars and keeps the defaults below.
+ *
+ * Read via `process.env` guarded by a `typeof process` check — this module is
+ * also imported by the browser bundle (for TIER_DISPLAY/TIER_ORDER), where
+ * `process` does not exist. Only server code reads the price IDs themselves.
  */
+function priceId(envVar: string, liveDefault: string): string {
+  if (typeof process !== "undefined" && process.env && process.env[envVar]) {
+    return process.env[envVar] as string;
+  }
+  return liveDefault;
+}
+
 export const STRIPE_PRICE_IDS_BY_TIER: Record<Exclude<UserTier, "freemium">, string> = {
-  basic: "price_1TnWBKHQLSQMVgM3PKmSmLeF",
-  advanced: "price_1TnWF9HQLSQMVgM3YuGscFOh",
-  designer: "price_1TnWGKHQLSQMVgM3jQHfgGDS",
+  basic: priceId("STRIPE_PRICE_BASIC", "price_1TnWBKHQLSQMVgM3PKmSmLeF"),
+  advanced: priceId("STRIPE_PRICE_ADVANCED", "price_1TnWF9HQLSQMVgM3YuGscFOh"),
+  designer: priceId("STRIPE_PRICE_DESIGNER", "price_1TnWGKHQLSQMVgM3jQHfgGDS"),
 };
 
 /**

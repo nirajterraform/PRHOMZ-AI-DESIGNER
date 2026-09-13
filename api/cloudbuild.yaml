@@ -39,12 +39,16 @@ steps:
     args: ['push', '--all-tags', '${_IMAGE_BASE}']
 
 substitutions:
+  # Defaults target live (prhomzmvp-nonprod). Staging overrides all three on the
+  # command line, so this one file serves both environments and stays safe to
+  # promote staging -> main.
   _IMAGE_BASE: 'us-central1-docker.pkg.dev/prhomzmvp-nonprod/api/api'
   _IMAGE_TAG: 'v1'
+  _SECRET_PROJECT: 'prhomzmvp-nonprod'
 
 availableSecrets:
   secretManager:
-    - versionName: 'projects/prhomzmvp-nonprod/secrets/maxmind-license-key/versions/latest'
+    - versionName: 'projects/${_SECRET_PROJECT}/secrets/maxmind-license-key/versions/latest'
       env: 'MAXMIND_LICENSE_KEY'
 
 images:

@@ -59,7 +59,18 @@ resource "google_cloud_run_v2_service" "api" {
       # Managed here so `terraform apply` doesn't wipe the gcloud-set value.
       env {
         name  = "GEOFENCE_ENABLED"
-        value = "true"
+        value = var.geofence_enabled ? "true" : "false"
+      }
+
+      # Per-tier Stripe Price ID overrides (see shared/pricing.ts). Empty in prod,
+      # so the live IDs compiled into the bundle win; staging points these at its
+      # Stripe test sandbox.
+      dynamic "env" {
+        for_each = var.stripe_price_ids
+        content {
+          name  = "STRIPE_PRICE_${upper(env.key)}"
+          value = env.value
+        }
       }
 
       env {
@@ -154,6 +165,17 @@ resource "google_cloud_run_v2_service" "stripe_webhook" {
       env {
         name  = "GOOGLE_CLOUD_PROJECT"
         value = var.project_id
+      }
+
+      # The webhook needs these too: getTierFromPriceId() maps the Stripe price on
+      # an incoming subscription event back to our tier. Without them, staging
+      # events carrying sandbox price IDs would resolve to no tier at all.
+      dynamic "env" {
+        for_each = var.stripe_price_ids
+        content {
+          name  = "STRIPE_PRICE_${upper(env.key)}"
+          value = env.value
+        }
       }
 
       env {

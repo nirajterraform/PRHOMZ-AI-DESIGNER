@@ -63,6 +63,30 @@ resource "google_secret_manager_secret_iam_member" "runtime_sendgrid" {
   member    = "serviceAccount:${google_service_account.cloud_run_runtime.email}"
 }
 
+# BUILD-time access to the MaxMind key: api/cloudbuild.yaml downloads the GeoLite2
+# DB during `docker build` (see availableSecrets there). This is separate from the
+# runtime grants above — Cloud Build runs as its own service account, not as
+# cloud-run-runtime. Which one depends on project vintage (legacy cloudbuild SA vs
+# the Compute Engine default), so grant both; the unused one is harmless.
+#
+# These bindings already exist in prhomzmvp-nonprod, added by hand in 2026 and never
+# codified — which is why staging had none and the first build would have failed.
+# If a prod apply objects that they already exist, import rather than recreate:
+#   terraform import 'module.platform.google_secret_manager_secret_iam_member.build_maxmind_cloudbuild' "projects/prhomzmvp-nonprod/secrets/maxmind-license-key roles/secretmanager.secretAccessor serviceAccount:352112669414@cloudbuild.gserviceaccount.com"
+resource "google_secret_manager_secret_iam_member" "build_maxmind_cloudbuild" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.maxmind_license_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
+}
+
+resource "google_secret_manager_secret_iam_member" "build_maxmind_compute" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.maxmind_license_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
 resource "google_project_iam_member" "runtime_auth_admin" {
   project = var.project_id
   role    = "roles/firebaseauth.admin"

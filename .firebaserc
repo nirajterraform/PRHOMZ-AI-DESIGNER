@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "prhomzmvp-nonprod"
+    "default": "prhomzmvp-nonprod",
+    "staging": "prhomzmvp-staging-505019"
   },
   "targets": {
     "prhomzmvp-nonprod": {
@@ -10,6 +11,13 @@
         ],
         "landing": [
           "prhomz-landing"
+        ]
+      }
+    },
+    "prhomzmvp-staging-505019": {
+      "hosting": {
+        "app": [
+          "prhomzmvp-staging-505019"
         ]
       }
     }

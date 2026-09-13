@@ -1,0 +1,4 @@
+project_id         = "your-staging-project-id"
+region             = "us-central1"
+billing_account_id = "0XXXXX-XXXXXX-XXXXXX"
+# alert_emails defaults to ["niraj.sriwastava@gmail.com"] for staging (see variables.tf)

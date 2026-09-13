@@ -27,6 +27,18 @@ variable "api_image" {
   default     = ""
 }
 
+variable "geofence_enabled" {
+  description = "Whether Shop the Look enforces the US-only geofence. Defaults to true so production keeps enforcing it; staging sets false in its terraform.tfvars. The MaxMind DB is baked into the image either way, so flipping this back on needs no rebuild."
+  type        = bool
+  default     = true
+}
+
+variable "stripe_price_ids" {
+  description = "Per-tier Stripe Price ID overrides, e.g. { basic = \"price_…\", advanced = \"price_…\", designer = \"price_…\" }. Rendered as STRIPE_PRICE_<TIER> env vars on both Cloud Run services. Leave empty in production so shared/pricing.ts keeps its live defaults; staging sets its sandbox IDs here."
+  type        = map(string)
+  default     = {}
+}
+
 variable "alert_emails" {
   description = "List of email addresses to receive monitoring alerts. Each gets its own notification channel and a one-time verification email. Add/remove members by editing the env's terraform.tfvars; no other changes needed."
   type        = list(string)
