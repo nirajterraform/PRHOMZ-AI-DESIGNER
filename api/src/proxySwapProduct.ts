@@ -111,6 +111,21 @@ export async function handleProxySwapProduct(
 
   const match = findMatchingInventory(item.name, source);
 
+  // sourceSent distinguishes "the client didn't send a source" (stale bundle)
+  // from "the client sent one and we resolved it" — without it a swap that
+  // silently falls back to PRHOMZ looks identical to one that was asked for.
+  console.log(
+    JSON.stringify({
+      severity: "INFO",
+      event: "product_swap_complete",
+      sourceSent: input?.source ?? null,
+      sourceUsed: source,
+      replacedPrice: currentPrice ?? null,
+      newPrice: item.price,
+      productUrl: match.productUrl,
+    }),
+  );
+
   return {
     product: {
       ...item,
