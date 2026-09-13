@@ -3,6 +3,14 @@ import { TIER_DISPLAY } from "../_shared/pricing";
 import type { UserTier } from "../_shared/tiers";
 
 /**
+ * Public URL of the designer app, used for the call-to-action link in outgoing
+ * email. Defaults to production so live behaviour is unchanged; staging sets
+ * APP_URL to its own Hosting URL via Terraform, so a staging email never sends
+ * the recipient to the production app.
+ */
+const APP_URL = process.env.APP_URL || "https://designer.prhomzai.com";
+
+/**
  * Branded "subscription cancelled" confirmation email.
  *
  * Stripe has no built-in cancellation email, so we send our own when a user
@@ -54,7 +62,7 @@ function buildCancellationEmail(
                 <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#c7cfdb;">Hi ${firstName},</p>
                 <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#c7cfdb;">We're confirming that your PRHOMZ AI subscription has been cancelled. ${untilLine}</p>
                 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#c7cfdb;">Changed your mind? You can re-subscribe anytime from your account — your gallery and settings stay put.</p>
-                <a href="https://designer.prhomzai.com" style="display:inline-block;background:#8ab4f6;color:#0b0f17;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px;">Open PRHOMZ AI</a>
+                <a href="${APP_URL}" style="display:inline-block;background:#8ab4f6;color:#0b0f17;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px;">Open PRHOMZ AI</a>
                 <p style="margin:28px 0 0;font-size:12px;line-height:1.6;color:#7c8598;">Questions? Reach us at support@prhomz.com.</p>
               </td>
             </tr>
@@ -74,7 +82,7 @@ We're confirming that your PRHOMZ AI subscription has been cancelled. ${untilTex
 
 Changed your mind? You can re-subscribe anytime from your account — your gallery and settings stay put.
 
-Open PRHOMZ AI: https://designer.prhomzai.com
+Open PRHOMZ AI: ${APP_URL}
 
 Questions? Reach us at support@prhomz.com.
 

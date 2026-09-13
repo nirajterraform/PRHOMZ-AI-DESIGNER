@@ -33,6 +33,12 @@ variable "geofence_enabled" {
   default     = true
 }
 
+variable "app_url" {
+  description = "Public URL of the designer app, used for the call-to-action link in outgoing email (api/src/lib/subscriptionEmail.ts). Leave empty in production so the code keeps its live default; staging sets its own Hosting URL so staging email never links to prod."
+  type        = string
+  default     = ""
+}
+
 variable "stripe_price_ids" {
   description = "Per-tier Stripe Price ID overrides, e.g. { basic = \"price_…\", advanced = \"price_…\", designer = \"price_…\" }. Rendered as STRIPE_PRICE_<TIER> env vars on both Cloud Run services. Leave empty in production so shared/pricing.ts keeps its live defaults; staging sets its sandbox IDs here."
   type        = map(string)

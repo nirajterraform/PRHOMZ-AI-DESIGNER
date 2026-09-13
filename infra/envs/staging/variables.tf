@@ -20,6 +20,12 @@ variable "alert_emails" {
   default     = ["niraj.sriwastava@gmail.com"]
 }
 
+variable "app_url" {
+  description = "Public URL of this environment's designer app, used in outgoing email links. Prod leaves this empty and keeps the live default in code."
+  type        = string
+  default     = ""
+}
+
 variable "stripe_price_ids" {
   description = "Per-tier Stripe Price ID overrides for this environment. Staging points at its Stripe test sandbox; prod leaves this empty so shared/pricing.ts keeps the live IDs."
   type        = map(string)

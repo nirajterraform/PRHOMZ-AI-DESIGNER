@@ -178,6 +178,16 @@ resource "google_cloud_run_v2_service" "stripe_webhook" {
         }
       }
 
+      # Link target for the cancellation email. Only emitted when set, so prod
+      # keeps the live default compiled into subscriptionEmail.ts.
+      dynamic "env" {
+        for_each = var.app_url != "" ? [var.app_url] : []
+        content {
+          name  = "APP_URL"
+          value = env.value
+        }
+      }
+
       env {
         name = "STRIPE_SECRET_KEY"
         value_source {

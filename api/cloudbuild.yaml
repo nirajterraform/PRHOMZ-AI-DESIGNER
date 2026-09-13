@@ -1,13 +1,40 @@
 # Build context expected: repo root.
-# Submit with:
-#   cd /Users/nirajsriwastava/PRHOMZ-AI-DESIGNER
-#   gcloud builds submit \
-#     --config api/cloudbuild.yaml \
-#     --substitutions=_IMAGE_TAG=v1 \
-#     --project=prhomzmvp-nonprod \
-#     .
+#
+# PRODUCTION (defaults already target it):
+#   cd ~/PRHOMZ-AI-DESIGNER
+#   gcloud builds submit --config api/cloudbuild.yaml \
+#     --substitutions=_IMAGE_TAG=v1 --project=prhomzmvp-nonprod .
+#
+# STAGING (must override the project-specific substitutions):
+#   cd ~/PRHOMZ-AI-DESIGNER-staging
+#   gcloud builds submit --config api/cloudbuild.yaml \
+#     --substitutions=_IMAGE_BASE=us-central1-docker.pkg.dev/prhomzmvp-staging-505019/api/api,_IMAGE_TAG=v1,_SECRET_PROJECT=prhomzmvp-staging-505019 \
+#     --project=prhomzmvp-staging-505019 .
 
 steps:
+  # Guard: the substitutions below default to PRODUCTION. Submitting this build
+  # from the staging worktree without overriding them would push the image into
+  # the production registry and read production's secret. Fail immediately
+  # rather than let a cross-environment build succeed quietly.
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+        if [[ "${_IMAGE_BASE}" != *"/$PROJECT_ID/"* ]]; then
+          echo "ERROR: _IMAGE_BASE targets a different project than this build." >&2
+          echo "  _IMAGE_BASE = ${_IMAGE_BASE}" >&2
+          echo "  build project = $PROJECT_ID" >&2
+          echo "Pass --substitutions=_IMAGE_BASE=us-central1-docker.pkg.dev/$PROJECT_ID/api/api,_SECRET_PROJECT=$PROJECT_ID" >&2
+          exit 1
+        fi
+        if [[ "${_SECRET_PROJECT}" != "$PROJECT_ID" ]]; then
+          echo "ERROR: _SECRET_PROJECT (${_SECRET_PROJECT}) is not this build's project ($PROJECT_ID)." >&2
+          exit 1
+        fi
+        echo "OK: building for $PROJECT_ID"
+
   # Download the GeoLite2-Country DB into the build context using the MaxMind
   # license key from Secret Manager, then bake it into the image (Dockerfile
   # COPY api/geodb/). The key never lands in the repo or the image.
