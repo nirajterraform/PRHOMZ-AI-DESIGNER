@@ -12,12 +12,22 @@
         "landing": [
           "prhomz-landing"
         ]
+      },
+      "storage": {
+        "gallery": [
+          "prhomzmvp-nonprod-gallery"
+        ]
       }
     },
     "prhomzmvp-staging-505019": {
       "hosting": {
         "app": [
           "prhomzmvp-staging-505019"
+        ]
+      },
+      "storage": {
+        "gallery": [
+          "prhomzmvp-staging-505019-gallery"
         ]
       }
     }
