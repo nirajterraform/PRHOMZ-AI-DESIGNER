@@ -39,16 +39,40 @@ function furnishingLevel(instruction: string): string {
   if (!m) return "";
   const budget = Number(m[1].replace(/,/g, ""));
   if (!Number.isFinite(budget) || budget <= 0) return "";
+  // The bands differ on four visible axes, not just material: piece SCALE, whether
+  // art is a statement or a cluster, accessory DENSITY, and how much colour is
+  // permitted beyond the preset's palette. Earlier versions varied material alone,
+  // which produced a real but near-invisible difference between a $5k and a $35k
+  // room -- the palette stayed identical, so nothing read as more expensive.
   if (budget < 5000) {
-    return "FURNISHING LEVEL: attainable high-street pieces — simple forms, veneer and laminate, practical hard-wearing textiles.";
+    return [
+      "FURNISHING LEVEL — ENTRY. This room must read as affordable and practical.",
+      "Compact, simple forms in veneer, laminate and powder-coated metal. Hard-wearing cotton and polyester textiles. Flat-pack proportions, nothing sculptural or oversized.",
+      "Keep it sparse: one or two small framed prints, a single plant, a plain low-pile rug, one basic lamp. Few accessories, no styling flourishes.",
+    ].join(" ");
   }
   if (budget < 15000) {
-    return "FURNISHING LEVEL: solid mid-range pieces — real wood, wool and cotton textiles, considered but unshowy quality.";
+    return [
+      "FURNISHING LEVEL — MID-RANGE. Solid, well-made, unshowy.",
+      "Real wood, wool and cotton textiles, brushed metal, quality upholstery in simple silhouettes.",
+      "Moderate styling: a small gallery cluster of framed prints, one or two plants, a patterned rug, a table lamp, a few books.",
+    ].join(" ");
   }
   if (budget < 30000) {
-    return "FURNISHING LEVEL: premium designer pieces — sculptural forms, marble, brass, full-grain leather, hand-finished detail.";
+    return [
+      "FURNISHING LEVEL — PREMIUM. This room must look clearly more expensive than a mid-range one at a glance.",
+      "Premium designer pieces at generous scale: sculptural silhouettes, marble or travertine surfaces, brass or bronze metalwork, full-grain leather, thick wool and velvet.",
+      "One large artwork rather than several small prints. A sculptural designer light fitting. Rich layering — oversized table lamp, stacked art books, collected ceramics, a substantial mature plant.",
+      "One deeper accent colour beyond the style's core palette is encouraged.",
+    ].join(" ");
   }
-  return "FURNISHING LEVEL: high-end bespoke — rare materials, statement designer furniture, gallery-grade original art, couture textiles.";
+  return [
+    "FURNISHING LEVEL — BESPOKE, THE HIGHEST TIER. This room must be unmistakably, obviously expensive at first glance, and must look dramatically richer than a budget version of the same room.",
+    "Statement designer furniture at commanding scale. Rare materials: book-matched marble, onyx, burl wood, patinated bronze, hand-stitched leather, silk and cashmere.",
+    "One oversized gallery-grade original artwork dominating a wall. A sculptural designer light fitting as the focal point of the room.",
+    "Densely curated styling: art books, collected ceramics, fresh flowers in a substantial vase, a decorative tray, candles, layered throws.",
+    "Deeper, richer tones are required — include at least one saturated jewel tone or warm metallic even if the style's core palette is restrained, so the wealth of the room is visible in the colour and not only in the materials.",
+  ].join(" ");
 }
 
 /**
