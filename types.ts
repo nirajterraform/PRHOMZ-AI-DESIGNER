@@ -96,15 +96,19 @@ export interface DesignPreset {
   isTrending?: boolean;
 }
 
+// Each prompt names concrete materials, a palette and signature pieces rather than
+// adjectives alone. Image models act on nouns ("walnut", "bouclé", "brass inlay")
+// far more than on vibe words ("sophisticated", "sleek"), and the old adjective-only
+// presets were a major reason generated rooms came back looking flat and generic.
 export const DESIGN_PRESETS: DesignPreset[] = [
-  { id: 'modern', label: 'Modern Chic', prompt: 'sleek contemporary luxury, clean lines, polished finishes, sophisticated palette', isTrending: true },
-  { id: 'boho', label: 'Bohemian', prompt: 'eclectic textures, warm organic tones, layered fabrics, relaxed artistic vibe' },
-  { id: 'japandi', label: 'Japandi', prompt: 'japanese minimalism meets scandinavian functionality, warm wood, serene space', isTrending: true },
-  { id: 'coastal', label: 'Coastal Modern', prompt: 'light airy feel, driftwood tones, oceanic blues, linen textures', isTrending: true },
-  { id: 'industrial', label: 'Industrial Loft', prompt: 'exposed architectural elements, metal accents, raw wood, urban aesthetic' },
-  { id: 'transitional', label: 'Transitional Luxe', prompt: 'perfect balance of traditional comfort and modern sleekness, timeless elegance', isTrending: true },
-  { id: 'scandi', label: 'Scandinavian', prompt: 'bright nordic minimalism, pale woods, soft neutral palette, cozy hygge textures' },
-  { id: 'midcentury', label: 'Mid-Century', prompt: 'mid-century modern, walnut tones, tapered legs, retro warmth, bold graphic accents', isTrending: true },
-  { id: 'farmhouse', label: 'Farmhouse', prompt: 'modern farmhouse, shiplap detailing, warm rustic wood, cozy neutral palette' },
-  { id: 'artdeco', label: 'Art Deco', prompt: 'art deco glamour, rich jewel tones, brass accents, bold geometric elegance' },
+  { id: 'modern', label: 'Modern Chic', prompt: 'sleek contemporary luxury — low-profile modular seating in bouclé or full-grain leather, large-format stone or polished concrete flooring, walnut and blackened-steel accents, a restrained greige, ivory and charcoal palette, one sculptural statement light', isTrending: true },
+  { id: 'boho', label: 'Bohemian', prompt: 'relaxed bohemian — layered vintage kilim rugs over jute, rattan and cane furniture, terracotta, ochre and dusty rose tones, macramé and raw linen textiles, trailing plants, mixed handmade ceramics, warm eclectic abundance' },
+  { id: 'japandi', label: 'Japandi', prompt: 'japandi — japanese restraint meeting scandinavian warmth, pale oak and blackened timber, low-slung furniture, wabi-sabi handmade ceramics, paper-diffused light, muted clay and oatmeal tones, generous negative space', isTrending: true },
+  { id: 'coastal', label: 'Coastal Modern', prompt: 'coastal modern — sun-bleached oak and driftwood, soft white linen slipcovers, pale sand and sea-glass blues, woven jute underfoot, rattan pendants, sheer curtains catching daylight, airy and uncluttered', isTrending: true },
+  { id: 'industrial', label: 'Industrial Loft', prompt: 'industrial loft — exposed brick and blackened steel framing, reclaimed timber, oxblood leather seating, factory pendants and caged glass, polished concrete, raw materiality softened by heavy textiles' },
+  { id: 'transitional', label: 'Transitional Luxe', prompt: 'transitional luxe — classic silhouettes in contemporary materials, deep upholstered seating, brass and smoked glass, layered warm neutrals with one deep accent tone, symmetrical arrangement, timeless unfussy elegance', isTrending: true },
+  { id: 'scandi', label: 'Scandinavian', prompt: 'scandinavian — bright nordic minimalism, pale ash and birch, soft white walls, wool throws and sheepskin, muted sage and blush accents, simple functional forms, cosy hygge warmth' },
+  { id: 'midcentury', label: 'Mid-Century', prompt: 'mid-century modern — walnut and teak, tapered legs, organic curved silhouettes, mustard, burnt orange and olive accents, tweed and leather upholstery, globe and sputnik lighting, bold graphic artwork', isTrending: true },
+  { id: 'farmhouse', label: 'Farmhouse', prompt: 'modern farmhouse — shiplap and painted panelling, reclaimed barn wood, aged iron hardware, slipcovered linen seating, warm whites and soft greys, stoneware and woven baskets, generous natural light' },
+  { id: 'artdeco', label: 'Art Deco', prompt: 'art deco glamour — emerald, sapphire and oxblood jewel tones, velvet upholstery, brass and polished chrome inlay, fluted and scalloped detailing, lacquered black and marble, mirrored surfaces, bold symmetry' },
 ];

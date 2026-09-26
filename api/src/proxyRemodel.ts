@@ -24,6 +24,62 @@ export interface ProxyRemodelOutput {
   dailyLimit: number;
 }
 
+// The original prompt, kept verbatim so REMODEL_PROMPT=legacy reverts the look
+// instantly via an env var instead of a rebuild + redeploy.
+function legacyPrompt(instruction: string): string {
+  const redesignConstraint = "INTERIOR REDESIGN & FURNISHING UPGRADE: Modify this room by ";
+  return `${redesignConstraint} ${instruction}. Maintain consistent architectural perspective.`;
+}
+
+// A dollar figure means nothing to an image model, but the quality tier it implies
+// does. The client keeps "Budget Target: $N" in the brief (Gallery parses it too),
+// so translate it here into material language the model can actually render.
+function furnishingLevel(instruction: string): string {
+  const m = /Budget Target:\s*\$([\d,]+)/i.exec(instruction);
+  if (!m) return "";
+  const budget = Number(m[1].replace(/,/g, ""));
+  if (!Number.isFinite(budget) || budget <= 0) return "";
+  if (budget < 5000) {
+    return "FURNISHING LEVEL: attainable high-street pieces — simple forms, veneer and laminate, practical hard-wearing textiles.";
+  }
+  if (budget < 15000) {
+    return "FURNISHING LEVEL: solid mid-range pieces — real wood, wool and cotton textiles, considered but unshowy quality.";
+  }
+  if (budget < 30000) {
+    return "FURNISHING LEVEL: premium designer pieces — sculptural forms, marble, brass, full-grain leather, hand-finished detail.";
+  }
+  return "FURNISHING LEVEL: high-end bespoke — rare materials, statement designer furniture, gallery-grade original art, couture textiles.";
+}
+
+/**
+ * The room the user photographed must stay recognisably theirs, so architecture and
+ * camera are pinned while everything movable is restyled. The photographic direction
+ * is the part that was missing entirely before: with no lighting, lens or quality
+ * language the model returned competent but evenly-lit, lifeless record shots.
+ */
+export function buildRemodelPrompt(instruction: string): string {
+  if ((process.env.REMODEL_PROMPT || "").toLowerCase() === "legacy") {
+    return legacyPrompt(instruction);
+  }
+
+  const level = furnishingLevel(instruction);
+
+  return [
+    "Photorealistic interior design photograph of this exact room, professionally restyled and staged.",
+    "",
+    `REDESIGN BRIEF: ${instruction}`,
+    ...(level ? ["", level] : []),
+    "",
+    "ARCHITECTURE — DO NOT CHANGE: preserve the existing walls, windows, doors, ceiling height, floor plan and room proportions exactly as photographed. Keep the identical camera position, angle and focal length. Do not add, move or remove structural elements. The result must be immediately recognisable as the same room.",
+    "",
+    "RESTYLE EVERYTHING ELSE: replace the furniture, lighting, rugs, textiles, wall art, window treatments and decor entirely. Layer the space so it reads as lived-in rather than a showroom — seating with cushions and a thrown blanket, lighting at three heights (ceiling, table, floor), plants, stacked books, ceramics, and art actually hung on the walls. Leave no wall completely bare.",
+    "",
+    "PHOTOGRAPHY: shot on a full-frame camera with a 24mm tilt-shift lens at f/4, verticals kept perfectly straight. Warm natural daylight entering from the existing windows as the key light, supplemented by the glow of practical lamps. Soft directional shadows, gentle highlight falloff, rich but natural colour. High micro-contrast with visible material texture — wood grain, fabric weave, stone veining. Sharp across the frame. Interior magazine quality, in the spirit of Architectural Digest.",
+    "",
+    "AVOID: flat even lighting, washed-out or muddy colour, bare empty walls, sterile showroom emptiness, CGI or 3D-render appearance, plastic-looking surfaces, cluttered mess, text, logos, watermarks, distorted furniture, warped perspective, extra or missing windows.",
+  ].join("\n");
+}
+
 export async function handleProxyRemodel(
   uid: string,
   input: ProxyRemodelInput,
@@ -60,8 +116,7 @@ export async function handleProxyRemodel(
     base64Image.substring(base64Image.indexOf(":") + 1, base64Image.indexOf(";")) ||
     "image/jpeg";
 
-  const redesignConstraint = "INTERIOR REDESIGN & FURNISHING UPGRADE: Modify this room by ";
-  const finalInstruction = `${redesignConstraint} ${instruction}. Maintain consistent architectural perspective.`;
+  const finalInstruction = buildRemodelPrompt(instruction);
 
   let response: GenerateContentResponse;
   try {

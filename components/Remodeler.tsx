@@ -224,8 +224,19 @@ export const Remodeler: React.FC<RemodelerProps> = ({
     startTimer();
 
     try {
-      const styleContext = selectedStyle ? DESIGN_PRESETS.find(p => p.id === selectedStyle)?.prompt : '';
-      const fullInstruction = `${instruction}. ${styleContext}. Budget Target: $${budget}`.trim();
+      // Built by joining only the parts that exist. The previous template
+      // interpolated `instruction` unconditionally, so with no typed text the
+      // prompt began "Modify this room by  . sleek contemporary..." -- an orphan
+      // period and a sentence that never completed. Keep the literal
+      // "Budget Target: $N" text: Gallery recovers the budget from the stored
+      // prompt via budgetFromPrompt().
+      const preset = selectedStyle ? DESIGN_PRESETS.find(p => p.id === selectedStyle) : undefined;
+      const briefParts: string[] = [];
+      const typed = instruction.trim().replace(/[.\s]+$/, '');
+      if (typed) briefParts.push(typed);
+      if (preset?.prompt) briefParts.push(`Style: ${preset.label} — ${preset.prompt}`);
+      briefParts.push(`Budget Target: $${budget}`);
+      const fullInstruction = `${briefParts.join('. ')}.`;
       const result = await remodelImage({
         base64Image: previewUrl,
         instruction: fullInstruction,
