@@ -100,15 +100,21 @@ export interface DesignPreset {
 // adjectives alone. Image models act on nouns ("walnut", "bouclé", "brass inlay")
 // far more than on vibe words ("sophisticated", "sleek"), and the old adjective-only
 // presets were a major reason generated rooms came back looking flat and generic.
+//
+// These describe MOVABLE THINGS ONLY — furniture, textiles, lighting, decor, palette.
+// Never name flooring, wall finishes or ceiling treatment here: the prompt pins the
+// room's architecture as unchangeable, and a preset that asked for "polished concrete
+// flooring" or "shiplap panelling" fought that instruction directly, which showed up
+// as the generated room drifting away from the user's actual room.
 export const DESIGN_PRESETS: DesignPreset[] = [
-  { id: 'modern', label: 'Modern Chic', prompt: 'sleek contemporary luxury — low-profile modular seating in bouclé or full-grain leather, large-format stone or polished concrete flooring, walnut and blackened-steel accents, a restrained greige, ivory and charcoal palette, one sculptural statement light', isTrending: true },
-  { id: 'boho', label: 'Bohemian', prompt: 'relaxed bohemian — layered vintage kilim rugs over jute, rattan and cane furniture, terracotta, ochre and dusty rose tones, macramé and raw linen textiles, trailing plants, mixed handmade ceramics, warm eclectic abundance' },
-  { id: 'japandi', label: 'Japandi', prompt: 'japandi — japanese restraint meeting scandinavian warmth, pale oak and blackened timber, low-slung furniture, wabi-sabi handmade ceramics, paper-diffused light, muted clay and oatmeal tones, generous negative space', isTrending: true },
-  { id: 'coastal', label: 'Coastal Modern', prompt: 'coastal modern — sun-bleached oak and driftwood, soft white linen slipcovers, pale sand and sea-glass blues, woven jute underfoot, rattan pendants, sheer curtains catching daylight, airy and uncluttered', isTrending: true },
-  { id: 'industrial', label: 'Industrial Loft', prompt: 'industrial loft — exposed brick and blackened steel framing, reclaimed timber, oxblood leather seating, factory pendants and caged glass, polished concrete, raw materiality softened by heavy textiles' },
+  { id: 'modern', label: 'Modern Chic', prompt: 'sleek contemporary luxury — low-profile modular seating in bouclé or full-grain leather, walnut and blackened-steel furniture, a restrained greige, ivory and charcoal palette, one sculptural statement light', isTrending: true },
+  { id: 'boho', label: 'Bohemian', prompt: 'relaxed bohemian — layered vintage kilim rugs, rattan and cane furniture, terracotta, ochre and dusty rose tones, macramé and raw linen textiles, trailing plants, mixed handmade ceramics, warm eclectic abundance' },
+  { id: 'japandi', label: 'Japandi', prompt: 'japandi — japanese restraint meeting scandinavian warmth, pale oak and blackened-timber furniture, low-slung seating, wabi-sabi handmade ceramics, paper-shaded lighting, muted clay and oatmeal tones, generous negative space', isTrending: true },
+  { id: 'coastal', label: 'Coastal Modern', prompt: 'coastal modern — sun-bleached oak and driftwood furniture, soft white linen slipcovers, pale sand and sea-glass blues, woven jute rugs, rattan pendants, sheer curtains catching daylight, airy and uncluttered', isTrending: true },
+  { id: 'industrial', label: 'Industrial Loft', prompt: 'industrial loft — blackened steel and reclaimed-timber furniture, oxblood leather seating, factory pendants and caged glass lighting, heavy canvas and wool textiles, raw utilitarian forms softened by layered fabric' },
   { id: 'transitional', label: 'Transitional Luxe', prompt: 'transitional luxe — classic silhouettes in contemporary materials, deep upholstered seating, brass and smoked glass, layered warm neutrals with one deep accent tone, symmetrical arrangement, timeless unfussy elegance', isTrending: true },
-  { id: 'scandi', label: 'Scandinavian', prompt: 'scandinavian — bright nordic minimalism, pale ash and birch, soft white walls, wool throws and sheepskin, muted sage and blush accents, simple functional forms, cosy hygge warmth' },
-  { id: 'midcentury', label: 'Mid-Century', prompt: 'mid-century modern — walnut and teak, tapered legs, organic curved silhouettes, mustard, burnt orange and olive accents, tweed and leather upholstery, globe and sputnik lighting, bold graphic artwork', isTrending: true },
-  { id: 'farmhouse', label: 'Farmhouse', prompt: 'modern farmhouse — shiplap and painted panelling, reclaimed barn wood, aged iron hardware, slipcovered linen seating, warm whites and soft greys, stoneware and woven baskets, generous natural light' },
-  { id: 'artdeco', label: 'Art Deco', prompt: 'art deco glamour — emerald, sapphire and oxblood jewel tones, velvet upholstery, brass and polished chrome inlay, fluted and scalloped detailing, lacquered black and marble, mirrored surfaces, bold symmetry' },
+  { id: 'scandi', label: 'Scandinavian', prompt: 'scandinavian — bright nordic minimalism, pale ash and birch furniture, wool throws and sheepskin, muted sage and blush accents, simple functional forms, cosy hygge warmth' },
+  { id: 'midcentury', label: 'Mid-Century', prompt: 'mid-century modern — walnut and teak furniture, tapered legs, organic curved silhouettes, mustard, burnt orange and olive accents, tweed and leather upholstery, globe and sputnik lighting, bold graphic artwork', isTrending: true },
+  { id: 'farmhouse', label: 'Farmhouse', prompt: 'modern farmhouse — reclaimed barn-wood furniture, aged iron hardware, slipcovered linen seating, warm whites and soft greys, stoneware and woven baskets, simple cotton window treatments' },
+  { id: 'artdeco', label: 'Art Deco', prompt: 'art deco glamour — emerald, sapphire and oxblood jewel tones, velvet upholstery, brass and polished chrome inlay, fluted and scalloped furniture detailing, lacquered black and marble-topped pieces, mirrored accents, bold symmetry' },
 ];

@@ -67,16 +67,19 @@ export function buildRemodelPrompt(instruction: string): string {
   return [
     "Photorealistic interior design photograph of this exact room, professionally restyled and staged.",
     "",
-    `REDESIGN BRIEF: ${instruction}`,
+    // Stated before the brief, not after. When the style brief came first the model
+    // treated the architecture lock as an afterthought and drifted -- swapping the
+    // floor, dropping an archway, changing the window wall.
+    "ARCHITECTURE — DO NOT CHANGE. This is a photograph of a real room belonging to the user; it must stay recognisably theirs. Reproduce exactly as photographed: the flooring material, pattern and colour; the wall finish and colour; the ceiling height and any ceiling detail; every window, its shape and its position; doors; archways and openings; and the room's proportions and floor plan. Keep the identical camera position, angle and focal length. Do not replace the floor. Do not add, move, resize or remove any window, door, archway or wall. If the brief below mentions a surface or finish, ignore that part — the brief governs only movable furnishings.",
+    "",
+    `REDESIGN BRIEF (movable furnishings only): ${instruction}`,
     ...(level ? ["", level] : []),
     "",
-    "ARCHITECTURE — DO NOT CHANGE: preserve the existing walls, windows, doors, ceiling height, floor plan and room proportions exactly as photographed. Keep the identical camera position, angle and focal length. Do not add, move or remove structural elements. The result must be immediately recognisable as the same room.",
-    "",
-    "RESTYLE EVERYTHING ELSE: replace the furniture, lighting, rugs, textiles, wall art, window treatments and decor entirely. Layer the space so it reads as lived-in rather than a showroom — seating with cushions and a thrown blanket, lighting at three heights (ceiling, table, floor), plants, stacked books, ceramics, and art actually hung on the walls. Leave no wall completely bare.",
+    "RESTYLE EVERYTHING MOVABLE: replace the furniture, lighting, rugs, textiles, wall art, window treatments and decor entirely. Layer the space so it reads as lived-in rather than a showroom — seating with cushions and a thrown blanket, lighting at three heights (ceiling, table, floor), plants, stacked books, ceramics, and art actually hung on the walls. Leave no wall completely bare.",
     "",
     "PHOTOGRAPHY: shot on a full-frame camera with a 24mm tilt-shift lens at f/4, verticals kept perfectly straight. Warm natural daylight entering from the existing windows as the key light, supplemented by the glow of practical lamps. Soft directional shadows, gentle highlight falloff, rich but natural colour. High micro-contrast with visible material texture — wood grain, fabric weave, stone veining. Sharp across the frame. Interior magazine quality, in the spirit of Architectural Digest.",
     "",
-    "AVOID: flat even lighting, washed-out or muddy colour, bare empty walls, sterile showroom emptiness, CGI or 3D-render appearance, plastic-looking surfaces, cluttered mess, text, logos, watermarks, distorted furniture, warped perspective, extra or missing windows.",
+    "AVOID: flat even lighting, washed-out or muddy colour, bare empty walls, sterile showroom emptiness, CGI or 3D-render appearance, plastic-looking surfaces, cluttered mess, text, logos, watermarks, distorted furniture, warped perspective, a replaced or re-coloured floor, an altered wall finish, and any added, missing or resized window, door or archway.",
   ].join("\n");
 }
 
