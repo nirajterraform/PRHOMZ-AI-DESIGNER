@@ -235,6 +235,10 @@ export const Remodeler: React.FC<RemodelerProps> = ({
       const typed = instruction.trim().replace(/[.\s]+$/, '');
       if (typed) briefParts.push(typed);
       if (preset?.prompt) briefParts.push(`Style: ${preset.label} — ${preset.prompt}`);
+      // Read by the backend to pick a styling paragraph that matches the style.
+      // Without it every theme got the same "layer it heavily" instruction, which
+      // fought the styles built on restraint.
+      if (preset?.density) briefParts.push(`Styling density: ${preset.density}`);
       briefParts.push(`Budget Target: $${budget}`);
       const fullInstruction = `${briefParts.join('. ')}.`;
       const result = await remodelImage({
