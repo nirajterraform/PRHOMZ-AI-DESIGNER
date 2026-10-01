@@ -117,6 +117,44 @@ export function buildRemodelPrompt(instruction: string): string {
   ].join("\n");
 }
 
+// Image model is env-selectable so quality tiers can be A/B'd on a live service
+// without a rebuild. Verified available to this project (generativelanguage
+// models.list, 2026-10-01), all accepting image input via generateContent:
+//   gemini-2.5-flash-image     "Nano Banana"      — the long-standing default
+//   gemini-3.1-flash-image     "Nano Banana 2"
+//   gemini-3-pro-image         "Nano Banana Pro"  — highest quality tier
+//
+// The DEFAULT stays on 2.5-flash deliberately. This file promotes to production
+// unchanged, and a new default would silently change production's image quality
+// AND its per-render cost the moment it merged. Staging opts in via the env var.
+const DEFAULT_IMAGE_MODEL = "gemini-2.5-flash-image";
+const ALLOWED_IMAGE_MODELS = new Set([
+  "gemini-2.5-flash-image",
+  "gemini-3.1-flash-image",
+  "gemini-3.1-flash-lite-image",
+  "gemini-3-pro-image",
+  "gemini-3-pro-image-preview",
+  "gemini-3.1-flash-image-preview",
+]);
+
+function imageModel(): string {
+  const requested = (process.env.REMODEL_IMAGE_MODEL || "").trim();
+  // Allowlisted rather than passed through: a typo in an env var would otherwise
+  // surface as a generic Gemini failure on every render.
+  if (requested && ALLOWED_IMAGE_MODELS.has(requested)) return requested;
+  if (requested) {
+    console.warn(
+      JSON.stringify({
+        severity: "WARNING",
+        event: "image_model_rejected",
+        requested,
+        fallback: DEFAULT_IMAGE_MODEL,
+      }),
+    );
+  }
+  return DEFAULT_IMAGE_MODEL;
+}
+
 export async function handleProxyRemodel(
   uid: string,
   input: ProxyRemodelInput,
@@ -154,11 +192,13 @@ export async function handleProxyRemodel(
     "image/jpeg";
 
   const finalInstruction = buildRemodelPrompt(instruction);
+  const model = imageModel();
+  const startedAt = Date.now();
 
   let response: GenerateContentResponse;
   try {
     response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
+      model,
       contents: {
         parts: [
           { inlineData: { data: base64Data, mimeType } },
@@ -167,7 +207,9 @@ export async function handleProxyRemodel(
       },
     });
   } catch (e) {
-    console.error(JSON.stringify({ severity: "ERROR", event: "gemini_call_failed", error: (e as Error).message }));
+    // Model is included so a tier that is unavailable or rate-limited for this
+    // project is distinguishable from a genuine generation failure.
+    console.error(JSON.stringify({ severity: "ERROR", event: "gemini_call_failed", model, error: (e as Error).message }));
     await rollbackReservation(uid);
     throw new ApiError("internal", "AI service failed. Please try again.");
   }
@@ -183,9 +225,24 @@ export async function handleProxyRemodel(
   }
 
   if (!outputBuffer) {
+    console.error(JSON.stringify({ severity: "ERROR", event: "gemini_no_image", model }));
     await rollbackReservation(uid);
     throw new ApiError("internal", "AI returned no image. Please try a different prompt.");
   }
+
+  // Lets the model tiers be compared on latency and output size (a proxy for
+  // resolution) from Cloud Logging, rather than by eye alone.
+  console.log(
+    JSON.stringify({
+      severity: "INFO",
+      event: "remodel_complete",
+      model,
+      promptVersion: (process.env.REMODEL_PROMPT || "").toLowerCase() === "legacy" ? "legacy" : "current",
+      durationMs: Date.now() - startedAt,
+      outputBytes: outputBuffer.length,
+      tier,
+    }),
+  );
 
   const watermarked = tier === "freemium";
   if (watermarked) outputBuffer = await applyWatermark(outputBuffer);
