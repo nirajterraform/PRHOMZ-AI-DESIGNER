@@ -89,7 +89,12 @@ export function buildRemodelPrompt(instruction: string): string {
   const level = furnishingLevel(instruction);
 
   return [
-    "Photorealistic interior design photograph of this exact room, professionally restyled and staged.",
+    // Deliberately an EDIT instruction, not a generation one. Describing the output
+    // as a "photograph ... professionally staged" reframed the task as "produce an
+    // image" rather than "alter the supplied image", and the model duly re-rendered
+    // the scene -- which is how geometry drifted. Production's short "Modify this
+    // room by ..." never drifts, and that framing is restored here.
+    "Edit the supplied photograph of this room. Keep it as a photograph of that same room taken from that same camera: do not re-shoot, re-frame, crop, zoom, or change the lens, perspective or field of view. Alter only the movable furnishings, then grade the light and colour as described below.",
     "",
     // Stated before the brief, not after. When the style brief came first the model
     // treated the architecture lock as an afterthought and drifted -- swapping the
@@ -101,9 +106,14 @@ export function buildRemodelPrompt(instruction: string): string {
     "",
     "RESTYLE EVERYTHING MOVABLE: replace the furniture, lighting, rugs, textiles, wall art, window treatments and decor entirely. Layer the space so it reads as lived-in rather than a showroom — seating with cushions and a thrown blanket, lighting at three heights (ceiling, table, floor), plants, stacked books, ceramics, and art actually hung on the walls. Leave no wall completely bare.",
     "",
-    "PHOTOGRAPHY: shot on a full-frame camera with a 24mm tilt-shift lens at f/4, verticals kept perfectly straight. Warm natural daylight entering from the existing windows as the key light, supplemented by the glow of practical lamps. Soft directional shadows, gentle highlight falloff, rich but natural colour. High micro-contrast with visible material texture — wood grain, fabric weave, stone veining. Sharp across the frame. Interior magazine quality, in the spirit of Architectural Digest.",
+    // No camera, lens or aperture is named. The previous version asked for "a 24mm
+    // tilt-shift lens at f/4" while the architecture block demanded the identical
+    // focal length -- a flat contradiction, and naming a lens the user's photo was
+    // not taken with is an instruction to re-render the perspective. Everything here
+    // is a grade applied to the existing frame, not a new exposure.
+    "LIGHT AND FINISH — apply to the existing photograph without re-shooting it: warm natural daylight from the existing windows as the key light, supplemented by the glow of the newly placed lamps. Soft directional shadows, gentle highlight falloff, rich but natural colour, deep but detailed shadows. High micro-contrast with visible material texture — wood grain, fabric weave, stone veining. Interior magazine finish, in the spirit of Architectural Digest. Keep the original framing and perspective exactly; maintain consistent architectural perspective.",
     "",
-    "AVOID: flat even lighting, washed-out or muddy colour, bare empty walls, sterile showroom emptiness, CGI or 3D-render appearance, plastic-looking surfaces, cluttered mess, text, logos, watermarks, distorted furniture, warped perspective, a replaced or re-coloured floor, an altered wall finish, and any added, missing or resized window, door or archway.",
+    "AVOID: re-framing, cropping, zooming, or any change of lens, perspective or viewpoint; flat even lighting, washed-out or muddy colour, bare empty walls, sterile showroom emptiness, CGI or 3D-render appearance, plastic-looking surfaces, cluttered mess, text, logos, watermarks, distorted furniture, warped perspective, a replaced or re-coloured floor, an altered wall finish, and any added, missing or resized window, door or archway.",
   ].join("\n");
 }
 
