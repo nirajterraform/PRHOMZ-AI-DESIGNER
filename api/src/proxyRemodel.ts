@@ -104,16 +104,25 @@ export function buildRemodelPrompt(instruction: string): string {
     `REDESIGN BRIEF (movable furnishings only): ${instruction}`,
     ...(level ? ["", level] : []),
     "",
-    "RESTYLE EVERYTHING MOVABLE: replace the furniture, lighting, rugs, textiles, wall art, window treatments and decor entirely. Layer the space so it reads as lived-in rather than a showroom — seating with cushions and a thrown blanket, lighting at three heights (ceiling, table, floor), plants, stacked books, ceramics, and art actually hung on the walls. Leave no wall completely bare.",
+    // "Leave no wall completely bare" was read as licence to fill openings: an
+    // archway came back as a gallery wall and a door came back as a bookshelf.
+    // The model treats an opening as unstyled surface unless told otherwise.
+    "RESTYLE EVERYTHING MOVABLE: replace the furniture, lighting, rugs, textiles, wall art, window treatments and decor entirely. Layer the space so it reads as lived-in rather than a showroom — seating with cushions and a thrown blanket, lighting at three heights (ceiling, table, floor), plants, stacked books, ceramics, and art hung on the solid areas of the walls.",
+    "",
+    "OPENINGS ARE NOT DECORATING SURFACES: a window, door, archway or any other opening is architecture, not blank wall. Never hang art over one, never cover, block, fill in or wall up one, never replace one with shelving, cabinetry, a mirror or a picture, and never stand furniture, plants or tall objects in front of one. Every door and archway in the original photograph must still be plainly visible, in the same place, at the same size, and unobstructed. Where a wall contains an opening, leave the opening clear and style only the solid wall around it.",
     "",
     // No camera, lens or aperture is named. The previous version asked for "a 24mm
     // tilt-shift lens at f/4" while the architecture block demanded the identical
     // focal length -- a flat contradiction, and naming a lens the user's photo was
     // not taken with is an instruction to re-render the perspective. Everything here
     // is a grade applied to the existing frame, not a new exposure.
-    "LIGHT AND FINISH — apply to the existing photograph without re-shooting it: warm natural daylight from the existing windows as the key light, supplemented by the glow of the newly placed lamps. Soft directional shadows, gentle highlight falloff, rich but natural colour, deep but detailed shadows. High micro-contrast with visible material texture — wood grain, fabric weave, stone veining. Interior magazine finish, in the spirit of Architectural Digest. Keep the original framing and perspective exactly; maintain consistent architectural perspective.",
+    // Previously this demanded "warm natural daylight from the existing windows".
+    // On a night photograph that is impossible to obey without inventing a daytime
+    // exterior -- and once the model is redrawing the window wall, the door and the
+    // window arrangement go with it. Forcing the light was rebuilding the geometry.
+    "LIGHT AND FINISH — grade the existing photograph; do not re-light the scene from scratch. Keep the original time of day and weather exactly as photographed, and reproduce the view through every window exactly as it appears: if the glass is dark, it stays dark; if it is daylit, it stays daylit. Never invent a different exterior, a different time of day, or a different view. Improve only the light produced by movable fittings — warm pools of light from the new lamps and ceiling fixture, soft directional shadows, gentle highlight falloff, rich but natural colour, deep but detailed shadows. High micro-contrast with visible material texture — wood grain, fabric weave, stone veining. Interior magazine finish, in the spirit of Architectural Digest. Keep the original framing and perspective exactly; maintain consistent architectural perspective.",
     "",
-    "AVOID: re-framing, cropping, zooming, or any change of lens, perspective or viewpoint; flat even lighting, washed-out or muddy colour, bare empty walls, sterile showroom emptiness, CGI or 3D-render appearance, plastic-looking surfaces, cluttered mess, text, logos, watermarks, distorted furniture, warped perspective, a replaced or re-coloured floor, an altered wall finish, and any added, missing or resized window, door or archway.",
+    "AVOID: re-framing, cropping, zooming, or any change of lens, perspective or viewpoint; changing the time of day, the weather, or the view through any window; covering, filling, walling up or hiding any door, archway or window; replacing a door or opening with shelving, cabinetry, a mirror or artwork; flat even lighting, washed-out or muddy colour, sterile showroom emptiness, CGI or 3D-render appearance, plastic-looking surfaces, cluttered mess, text, logos, watermarks, distorted furniture, warped perspective, a replaced or re-coloured floor, an altered wall finish, and any added, missing, moved or resized window, door or archway.",
   ].join("\n");
 }
 
