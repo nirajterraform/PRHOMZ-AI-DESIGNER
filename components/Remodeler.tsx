@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, ShoppingBag, Plus, Wand2, RefreshCcw, Star, Clock, Zap, MoveHorizontal, Camera, Upload, ChevronDown } from 'lucide-react';
-import { remodelImage } from '../services/geminiService';
+import { analyzeRoom, type RoomAnalysis, remodelImage } from '../services/geminiService';
 import { saveProductsToImage } from '../services/galleryService';
 import { downloadImage } from '../services/downloadImage';
 import { GeneratedImage, DESIGN_PRESETS, UserAccount } from '../types';
@@ -50,6 +50,10 @@ export const Remodeler: React.FC<RemodelerProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialImage || null);
   const [instruction, setInstruction] = useState('');
   const [roomType, setRoomType] = useState('');
+  // Agent disagreed with the selected room type; holds the analysis while we ask.
+  const [roomMismatch, setRoomMismatch] = useState<RoomAnalysis | null>(null);
+  // Carried into the retry after the user answers, so confirming costs no second analysis.
+  const [pendingAnalysis, setPendingAnalysis] = useState<RoomAnalysis | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string>('');
   // A design opened from the "Your Designs" strip. Its original source photo is
   // NOT stored, so we show it as a single result (no false before/after wipe).
@@ -163,6 +167,29 @@ export const Remodeler: React.FC<RemodelerProps> = ({
   const canSubmit =
     !!previewUrl && (instruction.trim().length > 0 || !!selectedStyle) && !isProcessing && !isQuotaReached;
 
+  // User agrees with the agent. Switch the room type to what was detected and
+  // reuse the analysis we already paid for rather than running it again.
+  const handleUseDetectedRoomType = () => {
+    if (!roomMismatch) return;
+    const detected = roomMismatch.observedRoomType;
+    track('room_type_corrected', { from: roomType || 'none', to: detected });
+    setRoomType(detected);
+    setPendingAnalysis(roomMismatch);
+    setRoomMismatch(null);
+    // State updates are async, so pass the analysis through explicitly.
+    void runRemodel(roomMismatch, detected);
+  };
+
+  // User overrules the agent. The brief was written for the room the agent saw,
+  // so it would be wrong for the room the user insists on — drop it and fall back
+  // to the standard prompt rather than describing the wrong kind of room.
+  const handleKeepMyRoomType = () => {
+    track('room_type_kept', { selected: roomType || 'none', detected: roomMismatch?.observedRoomType || 'none' });
+    setRoomMismatch(null);
+    setPendingAnalysis(null);
+    void runRemodel(null, roomType, /* skipAnalysis */ true);
+  };
+
   const handleRemodelClick = () => {
     if (!canSubmit || !currentUser) return;
     const daily = getDailyQuotaSnapshot(currentUser);
@@ -208,10 +235,21 @@ export const Remodeler: React.FC<RemodelerProps> = ({
     if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
   };
 
-  const handleRemodel = async () => {
+  const handleRemodel = async () => runRemodel();
+
+  // analysisOverride / roomTypeOverride carry the answer from the room-type
+  // confirmation dialog, because React state updates are async and the retry
+  // runs immediately after the user clicks.
+  const runRemodel = async (
+    analysisOverride?: RoomAnalysis | null,
+    roomTypeOverride?: string,
+    skipAnalysis = false,
+  ) => {
     if (isQuotaReached) return;
     if (!previewUrl || (!instruction.trim() && !selectedStyle)) return;
     if (!currentUser) return;
+
+    const effectiveRoomType = roomTypeOverride ?? roomType;
 
     setIsProcessing(true);
     setGenerationTime(null);
@@ -241,10 +279,38 @@ export const Remodeler: React.FC<RemodelerProps> = ({
       if (preset?.density) briefParts.push(`Styling density: ${preset.density}`);
       briefParts.push(`Budget Target: $${budget}`);
       const fullInstruction = `${briefParts.join('. ')}.`;
+
+      // Orchestrator step. Returns null when the agent is switched off server-side
+      // or analysis failed, in which case this is exactly the previous behaviour.
+      // Skipped entirely when the caller already confirmed a disagreed room type,
+      // so confirming does not pay for a second analysis.
+      let analysis = analysisOverride ?? pendingAnalysis;
+      if (!analysis && !skipAnalysis) {
+        analysis = await analyzeRoom({
+          base64Image: previewUrl,
+          selectedRoomType: effectiveRoomType || undefined,
+          styleLabel: preset?.label,
+          stylePrompt: preset?.prompt,
+          density: preset?.density,
+          budget,
+        });
+
+        // The agent believes this is a different room than the user selected.
+        // Stop and ask rather than spend a render credit on the wrong room type.
+        if (analysis && !analysis.matchesSelection && analysis.confidence !== 'low' && effectiveRoomType) {
+          stopTimer();
+          setIsProcessing(false);
+          setRoomMismatch(analysis);
+          return;
+        }
+      }
+
       const result = await remodelImage({
         base64Image: previewUrl,
         instruction: fullInstruction,
-        projectName: roomType || 'Untitled',
+        projectName: effectiveRoomType || 'Untitled',
+        agentBrief: analysis?.brief,
+        confirmedRoomType: effectiveRoomType || undefined,
       });
 
       stopTimer();
@@ -705,6 +771,36 @@ export const Remodeler: React.FC<RemodelerProps> = ({
           )}
         </div>
       </div>
+
+      {/* The agent read the photo as a different room than the user selected.
+          Asked before generating, so a render credit is never spent on the wrong
+          room type — a kitchen styled as a living room wastes the user's quota. */}
+      {roomMismatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleKeepMyRoomType} />
+          <div className="relative bg-google-bg border border-google-border rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <h3 className="text-lg font-bold text-google-dark">Is this a {roomMismatch.observedRoomType}?</h3>
+            <p className="text-sm text-google-gray leading-relaxed">
+              You selected <b>{roomType}</b>, but this photo looks like a{' '}
+              <b>{roomMismatch.observedRoomType}</b>. Designing it as the right kind of
+              room gives a much better result.
+            </p>
+            {roomMismatch.notableFeatures.length > 0 && (
+              <p className="text-xs text-google-gray">
+                What we can see: {roomMismatch.notableFeatures.slice(0, 3).join(', ')}.
+              </p>
+            )}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Button onClick={handleUseDetectedRoomType} className="flex-1 rounded-xl py-3 text-sm font-bold">
+                Yes, it's a {roomMismatch.observedRoomType}
+              </Button>
+              <Button variant="ghost" onClick={handleKeepMyRoomType} className="flex-1 rounded-xl py-3 text-sm font-bold">
+                No, keep {roomType}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {currentUser && (
         <PreRenderWarningModal

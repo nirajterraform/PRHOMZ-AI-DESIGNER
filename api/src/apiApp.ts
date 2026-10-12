@@ -8,6 +8,7 @@ import { evaluateShopRegion } from "./lib/geo";
 import { ApiError } from "./lib/apiError";
 import { handleProxyGenerateImage } from "./proxyGenerateImage";
 import { handleProxyRemodel } from "./proxyRemodel";
+import { handleProxyAnalyzeRoom } from "./proxyAnalyzeRoom";
 import { handleDeleteAccount } from "./deleteAccount";
 import { handleProxyChat } from "./proxyChat";
 import { handleProxyGenerateProductList } from "./proxyGenerateProductList";
@@ -50,6 +51,17 @@ app.post(
   requireAuth,
   requireVerifiedEmail,
   wrap((req) => handleProxyGenerateImage(req.user!.uid, req.body)),
+);
+
+// Orchestrator step. Runs BEFORE generation and deliberately consumes no render
+// quota, so a disagreement about the room type can be settled with the user
+// before a credit is spent. Returns {enabled:false} when the agent is switched
+// off, and the client then falls through to the fixed-prompt path unchanged.
+app.post(
+  "/proxyAnalyzeRoom",
+  requireAuth,
+  requireVerifiedEmail,
+  wrap((req) => handleProxyAnalyzeRoom(req.body)),
 );
 
 app.post(

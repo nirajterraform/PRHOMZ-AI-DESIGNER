@@ -21,7 +21,55 @@ export interface RemodelOptions {
   base64Image: string;
   instruction: string;
   projectName?: string;
+  agentBrief?: string;
+  confirmedRoomType?: string;
 }
+
+export interface RoomAnalysis {
+  observedRoomType: string;
+  confidence: "high" | "medium" | "low";
+  matchesSelection: boolean;
+  timeOfDay: string;
+  roomSize: string;
+  ceilingHeight: string;
+  notableFeatures: string[];
+  brief: string;
+}
+
+export interface AnalyzeRoomOptions {
+  base64Image: string;
+  selectedRoomType?: string;
+  styleLabel?: string;
+  stylePrompt?: string;
+  density?: string;
+  budget?: number;
+}
+
+/**
+ * Orchestrator step: asks the backend to study the photo and write a brief for
+ * this specific room, before any render credit is spent.
+ *
+ * Returns null whenever the agent is unavailable — switched off server-side,
+ * analysis failed, or the call errored. Callers treat null as "carry on exactly
+ * as before", so the single server-side flag governs the whole feature and
+ * reverting never needs a frontend deploy.
+ */
+export const analyzeRoom = async (
+  opts: AnalyzeRoomOptions,
+): Promise<RoomAnalysis | null> => {
+  try {
+    const base64Image = await toBase64DataUrl(opts.base64Image);
+    const result = await apiPost<
+      AnalyzeRoomOptions,
+      { enabled: boolean; analysis?: RoomAnalysis }
+    >("/proxyAnalyzeRoom", { ...opts, base64Image });
+    return result.enabled && result.analysis ? result.analysis : null;
+  } catch (error) {
+    // Never block a render on the analysis step.
+    console.warn("Room analysis unavailable, using standard prompt", error);
+    return null;
+  }
+};
 
 export interface GenerateOptions {
   prompt: string;

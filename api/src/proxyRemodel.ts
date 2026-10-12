@@ -5,12 +5,32 @@ import { reserveRenderSlot } from "./lib/quota";
 import { applyWatermark } from "./lib/watermark";
 import { uploadAndGetDownloadURL } from "./lib/storage";
 import { ApiError } from "./lib/apiError";
+import { agentEnabled } from "./proxyAnalyzeRoom";
 
 export interface ProxyRemodelInput {
   base64Image?: string;
   instruction?: string;
   projectName?: string;
+  /**
+   * Design brief written by the orchestrator (proxyAnalyzeRoom) after looking at
+   * this specific photo. Optional: absent when the agent is switched off, when
+   * analysis failed, or from an older client — all of which fall back to the
+   * fixed prompt.
+   *
+   * It is accepted from the client rather than recomputed here so the user can
+   * confirm a disagreed room type before a render credit is spent. That is not a
+   * new attack surface: the free-text instruction field has always been
+   * user-controlled, and the guardrails below are appended server-side and cannot
+   * be overridden by anything the client sends.
+   */
+  agentBrief?: string;
+  /** Room type as finally confirmed by the user, after any disagreement. */
+  confirmedRoomType?: string;
 }
+
+// A brief is ~120 words by design. The cap stops an oversized payload displacing
+// the guardrails that follow it.
+const MAX_AGENT_BRIEF_CHARS = 2000;
 
 export interface ProxyRemodelOutput {
   imageId: string;
@@ -94,18 +114,54 @@ function stylingDensity(instruction: string): string {
   return "STYLING — BALANCED: layer the space so it reads as lived-in rather than a showroom — seating with cushions and a thrown blanket, lighting at three heights (ceiling, table, floor), a plant or two, stacked books, a few ceramics, and art hung on the solid areas of the walls. Full enough to feel inhabited, restrained enough to feel designed.";
 }
 
+// The guardrails. Hoisted into constants so the orchestrator path and the fixed
+// path use byte-identical text -- if these ever drift apart, geometry bugs come
+// back on one path only and are miserable to track down.
+const ARCHITECTURE_RULE = "ARCHITECTURE — DO NOT CHANGE. This is a photograph of a real room belonging to the user; it must stay recognisably theirs. Reproduce exactly as photographed: the flooring material, pattern and colour; the wall finish and colour; the ceiling height and any ceiling detail; every window, its shape and its position; doors; archways and openings; and the room's proportions and floor plan. Keep the identical camera position, angle and focal length. Do not replace the floor. Do not add, move, resize or remove any window, door, archway or wall. If the brief below mentions a surface or finish, ignore that part — the brief governs only movable furnishings.";
+
+const OPENINGS_RULE = "OPENINGS ARE NOT DECORATING SURFACES: a window, door, archway or any other opening is architecture, not blank wall. Never hang art over one, never cover, block, fill in or wall up one, never replace one with shelving, cabinetry, a mirror or a picture, and never stand furniture, plants or tall objects in front of one. Every door and archway in the original photograph must still be plainly visible, in the same place, at the same size, and unobstructed. Where a wall contains an opening, leave the opening clear and style only the solid wall around it.";
+
+const LIGHT_AND_FINISH_RULE = "LIGHT AND FINISH — grade the existing photograph; do not re-light the scene from scratch. Keep the original time of day and weather exactly as photographed, and reproduce the view through every window exactly as it appears: if the glass is dark, it stays dark; if it is daylit, it stays daylit. Never invent a different exterior, a different time of day, or a different view. Improve only the light produced by movable fittings — warm pools of light from the new lamps and ceiling fixture, soft directional shadows, gentle highlight falloff, rich but natural colour, deep but detailed shadows. High micro-contrast with visible material texture — wood grain, fabric weave, stone veining. Interior magazine finish, in the spirit of Architectural Digest. Keep the original framing and perspective exactly; maintain consistent architectural perspective.";
+
+const AVOID_RULE = "AVOID: re-framing, cropping, zooming, or any change of lens, perspective or viewpoint; changing the time of day, the weather, or the view through any window; covering, filling, walling up or hiding any door, archway or window; replacing a door or opening with shelving, cabinetry, a mirror or artwork; flat even lighting, washed-out or muddy colour, a sterile unstyled or unfinished look, CGI or 3D-render appearance, plastic-looking surfaces, cluttered mess, text, logos, watermarks, distorted furniture, warped perspective, a replaced or re-coloured floor, an altered wall finish, and any added, missing, moved or resized window, door or archway.";
+
 /**
  * The room the user photographed must stay recognisably theirs, so architecture and
  * camera are pinned while everything movable is restyled. The photographic direction
  * is the part that was missing entirely before: with no lighting, lens or quality
  * language the model returned competent but evenly-lit, lifeless record shots.
  */
-export function buildRemodelPrompt(instruction: string): string {
+export function buildRemodelPrompt(instruction: string, agentBrief?: string): string {
   if ((process.env.REMODEL_PROMPT || "").toLowerCase() === "legacy") {
     return legacyPrompt(instruction);
   }
 
   const level = furnishingLevel(instruction);
+
+  // When the orchestrator supplied a brief it REPLACES the generic style and
+  // density paragraphs -- those exist only to approximate room-specific direction
+  // that the agent can now give properly. Everything after this point (the
+  // architecture lock, the openings rule, the light-and-finish rule, AVOID) is
+  // appended identically either way and is NOT negotiable by the agent. That
+  // separation is deliberate: the agent gets full creative latitude and zero
+  // ability to reopen the geometry bugs that took a week to find.
+  const brief = (agentBrief || "").trim().slice(0, MAX_AGENT_BRIEF_CHARS);
+  if (brief) {
+    return [
+      "Edit the supplied photograph of this room. Keep it as a photograph of that same room taken from that same camera: do not re-shoot, re-frame, crop, zoom, or change the lens, perspective or field of view. Alter only the movable furnishings, then grade the light and colour as described below.",
+      "",
+      ARCHITECTURE_RULE,
+      "",
+      `REDESIGN BRIEF (movable furnishings only): ${brief}`,
+      ...(level ? ["", level] : []),
+      "",
+      OPENINGS_RULE,
+      "",
+      LIGHT_AND_FINISH_RULE,
+      "",
+      AVOID_RULE,
+    ].join("\n");
+  }
 
   return [
     // Deliberately an EDIT instruction, not a generation one. Describing the output
@@ -118,7 +174,7 @@ export function buildRemodelPrompt(instruction: string): string {
     // Stated before the brief, not after. When the style brief came first the model
     // treated the architecture lock as an afterthought and drifted -- swapping the
     // floor, dropping an archway, changing the window wall.
-    "ARCHITECTURE — DO NOT CHANGE. This is a photograph of a real room belonging to the user; it must stay recognisably theirs. Reproduce exactly as photographed: the flooring material, pattern and colour; the wall finish and colour; the ceiling height and any ceiling detail; every window, its shape and its position; doors; archways and openings; and the room's proportions and floor plan. Keep the identical camera position, angle and focal length. Do not replace the floor. Do not add, move, resize or remove any window, door, archway or wall. If the brief below mentions a surface or finish, ignore that part — the brief governs only movable furnishings.",
+    ARCHITECTURE_RULE,
     "",
     `REDESIGN BRIEF (movable furnishings only): ${instruction}`,
     ...(level ? ["", level] : []),
@@ -130,7 +186,7 @@ export function buildRemodelPrompt(instruction: string): string {
     "",
     stylingDensity(instruction),
     "",
-    "OPENINGS ARE NOT DECORATING SURFACES: a window, door, archway or any other opening is architecture, not blank wall. Never hang art over one, never cover, block, fill in or wall up one, never replace one with shelving, cabinetry, a mirror or a picture, and never stand furniture, plants or tall objects in front of one. Every door and archway in the original photograph must still be plainly visible, in the same place, at the same size, and unobstructed. Where a wall contains an opening, leave the opening clear and style only the solid wall around it.",
+    OPENINGS_RULE,
     "",
     // No camera, lens or aperture is named. The previous version asked for "a 24mm
     // tilt-shift lens at f/4" while the architecture block demanded the identical
@@ -141,9 +197,9 @@ export function buildRemodelPrompt(instruction: string): string {
     // On a night photograph that is impossible to obey without inventing a daytime
     // exterior -- and once the model is redrawing the window wall, the door and the
     // window arrangement go with it. Forcing the light was rebuilding the geometry.
-    "LIGHT AND FINISH — grade the existing photograph; do not re-light the scene from scratch. Keep the original time of day and weather exactly as photographed, and reproduce the view through every window exactly as it appears: if the glass is dark, it stays dark; if it is daylit, it stays daylit. Never invent a different exterior, a different time of day, or a different view. Improve only the light produced by movable fittings — warm pools of light from the new lamps and ceiling fixture, soft directional shadows, gentle highlight falloff, rich but natural colour, deep but detailed shadows. High micro-contrast with visible material texture — wood grain, fabric weave, stone veining. Interior magazine finish, in the spirit of Architectural Digest. Keep the original framing and perspective exactly; maintain consistent architectural perspective.",
+    LIGHT_AND_FINISH_RULE,
     "",
-    "AVOID: re-framing, cropping, zooming, or any change of lens, perspective or viewpoint; changing the time of day, the weather, or the view through any window; covering, filling, walling up or hiding any door, archway or window; replacing a door or opening with shelving, cabinetry, a mirror or artwork; flat even lighting, washed-out or muddy colour, a sterile unstyled or unfinished look, CGI or 3D-render appearance, plastic-looking surfaces, cluttered mess, text, logos, watermarks, distorted furniture, warped perspective, a replaced or re-coloured floor, an altered wall finish, and any added, missing, moved or resized window, door or archway.",
+    AVOID_RULE,
   ].join("\n");
 }
 
@@ -189,10 +245,14 @@ export async function handleProxyRemodel(
   uid: string,
   input: ProxyRemodelInput,
 ): Promise<ProxyRemodelOutput> {
-  const { base64Image, instruction, projectName } = input || {};
+  const { base64Image, instruction, projectName, agentBrief, confirmedRoomType } =
+    input || {};
   if (!base64Image || !instruction) {
     throw new ApiError("invalid-argument", "base64Image and instruction required.");
   }
+  // Only honoured while the agent is switched on, so flipping REMODEL_AGENT=off
+  // reverts behaviour even for a client that still sends a brief.
+  const brief = agentEnabled() ? agentBrief : undefined;
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new ApiError("internal", "GEMINI_API_KEY not configured.");
@@ -221,7 +281,7 @@ export async function handleProxyRemodel(
     base64Image.substring(base64Image.indexOf(":") + 1, base64Image.indexOf(";")) ||
     "image/jpeg";
 
-  const finalInstruction = buildRemodelPrompt(instruction);
+  const finalInstruction = buildRemodelPrompt(instruction, brief);
   const model = imageModel();
   const startedAt = Date.now();
 
@@ -268,6 +328,11 @@ export async function handleProxyRemodel(
       event: "remodel_complete",
       model,
       promptVersion: (process.env.REMODEL_PROMPT || "").toLowerCase() === "legacy" ? "legacy" : "current",
+      agentBrief: brief ? "yes" : "no",
+      confirmedRoomType: confirmedRoomType || null,
+      // Full composed prompt, so a bad render can be diagnosed from the exact
+      // text that produced it rather than from a version label.
+      composedPrompt: finalInstruction,
       durationMs: Date.now() - startedAt,
       outputBytes: outputBuffer.length,
       tier,
