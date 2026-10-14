@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigation } from './components/Navigation';
 import { PwaInstallButton } from './components/PwaInstallButton';
+import { BuildBadge } from './components/BuildBadge';
 import { IosInstallBanner } from './components/IosInstallBanner';
 import { Remodeler } from './components/Remodeler';
 import { Assistant } from './components/Assistant';
@@ -34,6 +35,8 @@ function App() {
     <>
       <MainApp />
       <IosInstallBanner />
+      {/* Env + build id. Renders only when VITE_ENV_LABEL is set, so production is unaffected. */}
+      <BuildBadge />
     </>
   );
 }

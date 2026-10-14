@@ -4,8 +4,23 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Stamped at build time, so it changes on every build. The PWA service worker
+// (registerType: 'autoUpdate') can keep serving a previous bundle after a deploy,
+// which repeatedly made freshly-fixed features look broken during testing --
+// several rounds of staging results turned out to be the old bundle. Surfacing
+// this in the UI makes "am I actually testing the new build?" answerable at a
+// glance instead of via DevTools.
+const BUILD_ID = (() => {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${String(d.getUTCFullYear()).slice(2)}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}-${p(d.getUTCHours())}${p(d.getUTCMinutes())}`;
+})();
+
 export default defineConfig(() => {
     return {
+      define: {
+        __BUILD_ID__: JSON.stringify(BUILD_ID),
+      },
       server: {
         port: 3000,
         host: '0.0.0.0',
