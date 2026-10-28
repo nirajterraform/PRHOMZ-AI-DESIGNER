@@ -16,7 +16,16 @@ import {
 } from "lucide-react";
 import { Button } from "./Button";
 import { PwaInstallButton } from "./PwaInstallButton";
-import { signIn, signUp, sendReset, validatePassword, validateEmailFormat } from "../services/authService";
+import {
+  signIn,
+  signUp,
+  sendReset,
+  validatePassword,
+  validateEmailFormat,
+  requestEmailLink,
+  passwordlessEnabled,
+  PASSWORDLESS_DISABLED,
+} from "../services/authService";
 import { TermsModal, type LegalDocKind } from "./TermsModal";
 import {
   GENDER_OPTIONS,
@@ -26,7 +35,7 @@ import {
   type SignupProfile,
 } from "../shared/profile";
 
-type View = "landing" | "signup" | "signin" | "forgot";
+type View = "landing" | "signup" | "signin" | "forgot" | "emailLink" | "linkSent";
 
 function describeAuthError(err: unknown): string {
   if (!(err instanceof Error)) return "Something went wrong. Please try again.";
@@ -43,6 +52,9 @@ function describeAuthError(err: unknown): string {
 }
 
 export const Auth: React.FC = () => {
+  // Build-time flag. When off, every passwordless branch below is skipped and
+  // the screen behaves exactly as it did before.
+  const [passwordless, setPasswordless] = useState(passwordlessEnabled());
   const [view, setView] = useState<View>("landing");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -120,6 +132,36 @@ export const Auth: React.FC = () => {
       await signUp(email, password, profile);
       // App.tsx auth listener will route to EmailVerificationPending
     } catch (err) {
+      setError(describeAuthError(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRequestLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    const emailError = validateEmailFormat(email);
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await requestEmailLink(email, { acceptedTerms, acceptedPrivacy });
+      setView("linkSent");
+    } catch (err) {
+      // The server-side off-switch: drop back to the password screens instead of
+      // leaving the user on a path that cannot complete. This is what makes the
+      // env-var revert work without a frontend deploy.
+      if (err instanceof Error && err.message === PASSWORDLESS_DISABLED) {
+        setPasswordless(false);
+        setView("signin");
+        setError("Email sign-in links are temporarily unavailable. Please sign in with your password.");
+        return;
+      }
       setError(describeAuthError(err));
     } finally {
       setIsLoading(false);
@@ -216,17 +258,18 @@ export const Auth: React.FC = () => {
 
               <div className="space-y-4">
                 <Button
-                  onClick={() => switchView("signup")}
+                  onClick={() => switchView(passwordless ? "emailLink" : "signup")}
                   className="w-full py-5 rounded-2xl group/btn text-base shadow-xl"
                 >
-                  Create Account <ArrowRight size={20} className="ml-3 group-hover/btn:translate-x-2 transition-transform" />
+                  {passwordless ? "Continue with Email" : "Create Account"}
+                  <ArrowRight size={20} className="ml-3 group-hover/btn:translate-x-2 transition-transform" />
                 </Button>
                 <button
                   type="button"
                   onClick={() => switchView("signin")}
                   className="w-full py-4 text-xs font-black uppercase tracking-[0.2em] text-google-gray hover:text-google-dark transition-colors"
                 >
-                  Already a member? Sign In
+                  {passwordless ? "Have a password? Sign In" : "Already a member? Sign In"}
                 </button>
               </div>
 
@@ -239,6 +282,109 @@ export const Auth: React.FC = () => {
                   <Sparkles size={18} />
                   <span className="text-xs font-bold uppercase tracking-widest">AI Workspace</span>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {view === "emailLink" && (
+            <form onSubmit={handleRequestLink} className="space-y-7 animate-in fade-in slide-in-from-right-6 duration-500">
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-google-dark">Sign in with your email</h2>
+                <p className="text-sm text-google-gray leading-relaxed">
+                  No password to create or remember. Enter your email and we'll send
+                  you a link that signs you straight in.
+                </p>
+              </div>
+
+              <EmailField email={email} setEmail={setEmail} />
+
+              <div className="space-y-3 pt-1">
+                <LegalCheckbox
+                  id="link-accept-terms"
+                  checked={acceptedTerms}
+                  onChange={setAcceptedTerms}
+                  linkLabel="Terms & Conditions"
+                  onLinkClick={() => setLegalModal("terms")}
+                />
+                <LegalCheckbox
+                  id="link-accept-privacy"
+                  checked={acceptedPrivacy}
+                  onChange={setAcceptedPrivacy}
+                  linkLabel="Privacy Policy"
+                  onLinkClick={() => setLegalModal("privacy")}
+                />
+              </div>
+
+              {errorBlock}
+
+              <Button
+                type="submit"
+                isLoading={isLoading}
+                className="w-full py-5 rounded-2xl text-base shadow-xl"
+                disabled={!email || !acceptedTerms || !acceptedPrivacy}
+              >
+                {isLoading ? "Sending Link..." : "Email Me a Sign-In Link"}
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => switchView("landing")}
+                className="w-full text-xs font-black uppercase tracking-[0.2em] text-google-gray hover:text-google-dark transition-colors flex items-center justify-center"
+              >
+                <ArrowLeft size={14} className="mr-2" /> Back
+              </button>
+            </form>
+          )}
+
+          {view === "linkSent" && (
+            <div className="space-y-7 animate-in fade-in slide-in-from-right-6 duration-500">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 rounded-2xl bg-google-blue/10 border border-google-blue/20 flex items-center justify-center text-google-blue">
+                  <Mail size={30} />
+                </div>
+              </div>
+
+              <div className="space-y-3 text-center">
+                <h2 className="text-2xl font-bold text-google-dark">Check your email</h2>
+                <p className="text-sm text-google-gray leading-relaxed">
+                  We sent a sign-in link to <span className="font-bold text-google-dark">{email}</span>.
+                  Open it and you're in.
+                </p>
+              </div>
+
+              {/* The link carries no email address by design, so completing it in
+                  a different browser means re-entering the address. Saying so up
+                  front avoids a confusing second prompt. */}
+              <div className="bg-google-blue/5 border border-google-blue/15 rounded-2xl px-5 py-4 space-y-2">
+                <p className="text-xs text-google-gray leading-relaxed">
+                  <span className="font-bold text-google-dark">Open it on this device</span> if you
+                  can — that way you won't be asked to confirm your address again.
+                </p>
+                <p className="text-xs text-google-gray leading-relaxed">
+                  Nothing after a minute or two? Check your spam or junk folder.
+                </p>
+              </div>
+
+              {errorBlock}
+
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setView("emailLink");
+                  }}
+                  className="w-full py-4 text-xs font-black uppercase tracking-[0.2em] text-google-gray hover:text-google-dark transition-colors"
+                >
+                  Use a different email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchView("landing")}
+                  className="w-full text-xs font-black uppercase tracking-[0.2em] text-google-gray hover:text-google-dark transition-colors flex items-center justify-center"
+                >
+                  <ArrowLeft size={14} className="mr-2" /> Back
+                </button>
               </div>
             </div>
           )}
@@ -344,7 +490,11 @@ export const Auth: React.FC = () => {
             <form onSubmit={handleSignIn} className="space-y-7 animate-in fade-in slide-in-from-right-6 duration-500">
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold text-google-dark">Welcome back</h2>
-                <p className="text-sm text-google-gray">Sign in to your atelier.</p>
+                <p className="text-sm text-google-gray">
+                  {passwordless
+                    ? "Sign in with the password you set up."
+                    : "Sign in to your atelier."}
+                </p>
               </div>
 
               <EmailField email={email} setEmail={setEmail} />
@@ -370,6 +520,18 @@ export const Auth: React.FC = () => {
               >
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
+
+              {/* Escape hatch for anyone who arrives here without a password —
+                  every account created from now on is link-only. */}
+              {passwordless && (
+                <button
+                  type="button"
+                  onClick={() => switchView("emailLink")}
+                  className="w-full text-xs font-bold uppercase tracking-widest text-google-blue hover:underline transition-colors"
+                >
+                  No password? Email me a sign-in link
+                </button>
+              )}
 
               <button
                 type="button"

@@ -18,7 +18,8 @@ import { AppMode, GeneratedImage, UserAccount } from './types';
 import { Loader2, LogOut, Crown, AlertTriangle, CalendarClock, MessageSquare, Trash2 } from 'lucide-react';
 import { FeedbackModal } from './components/FeedbackModal';
 import { DeleteAccountModal } from './components/DeleteAccountModal';
-import { onAuthChange, signOut } from './services/authService';
+import { EmailLinkCallback } from './components/EmailLinkCallback';
+import { onAuthChange, signOut, isIncomingEmailLink, ensureUserDoc } from './services/authService';
 import { subscribeToUser } from './services/userService';
 import { subscribeToGallery } from './services/galleryService';
 import { createCustomerPortalSession } from './services/stripeService';
@@ -52,6 +53,14 @@ function MainApp() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
 
+
+  // An incoming passwordless sign-in link, captured once on mount. Checked
+  // before the normal auth gates because the user is not signed in yet at this
+  // point — the link is what signs them in. Always false when the passwordless
+  // feature was never used, so this costs nothing on the password path.
+  const [handlingEmailLink, setHandlingEmailLink] = useState<boolean>(() =>
+    isIncomingEmailLink(),
+  );
 
   // Phase 4 Day 3: detect post-checkout redirect from Stripe / MockCheckout and
   // surface the UpgradeSuccess screen. We capture the param once on mount so
@@ -88,7 +97,19 @@ function MainApp() {
   // Function finishes (usually <500ms after Auth signup).
   useEffect(() => {
     if (!authUser || !authUser.emailVerified) return;
-    const unsubscribe = subscribeToUser(authUser.uid, setUserDoc);
+    let bootstrapAttempted = false;
+    const unsubscribe = subscribeToUser(authUser.uid, (user) => {
+      setUserDoc(user);
+      // Self-heal. A verified, signed-in user with no document would otherwise
+      // sit on "Preparing your studio…" forever — which happens to passwordless
+      // users (no signup form to bootstrap from) and to password users whose
+      // post-signup bootstrap call failed. The server call is idempotent, so one
+      // attempt is safe and the live snapshot picks up the result.
+      if (!user && !bootstrapAttempted) {
+        bootstrapAttempted = true;
+        void ensureUserDoc();
+      }
+    });
     return () => unsubscribe();
   }, [authUser]);
 
@@ -229,6 +250,17 @@ function MainApp() {
   };
 
   // Render hierarchy
+
+  // Before the auth gates: an incoming sign-in link is what creates the session,
+  // so it has to be handled while authUser is still null.
+  if (handlingEmailLink) {
+    return (
+      <EmailLinkCallback
+        onComplete={() => setHandlingEmailLink(false)}
+        onGiveUp={() => setHandlingEmailLink(false)}
+      />
+    );
+  }
   if (authUser === undefined) {
     return <FullPageSpinner label="Loading..." />;
   }
