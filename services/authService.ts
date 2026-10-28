@@ -183,6 +183,41 @@ export function isIncomingEmailLink(): boolean {
   }
 }
 
+/**
+ * The sign-in link for this page load, held in memory once the address bar has
+ * been cleared. Module-level so the capture happens exactly once even if React
+ * renders the detecting component twice (StrictMode) or two callers ask.
+ */
+let capturedLink: string | null = null;
+
+/**
+ * Detect an incoming sign-in link, take a copy, and strip it from the address
+ * bar straight away.
+ *
+ * The link carries `oobCode` — the actual sign-in credential. Left in the URL it
+ * shows in the address bar and, worse, is written to browser history, where it
+ * outlives the sign-in on a shared machine. Clearing it before we start the
+ * network round-trip (rather than after) means it is never visible and never
+ * recorded, while the in-memory copy completes the sign-in as normal.
+ *
+ * `apiKey`, also in that URL, is only a project identifier — it ships in the
+ * client bundle and is not a secret — but there is no reason to leave it either.
+ *
+ * Returns true when this page load is a sign-in link.
+ */
+export function captureIncomingEmailLink(): boolean {
+  if (capturedLink) return true;
+  if (!isIncomingEmailLink()) return false;
+
+  capturedLink = window.location.href;
+  try {
+    window.history.replaceState({}, "", window.location.pathname);
+  } catch {
+    // Non-fatal: sign-in still works, the parameters just stay in the bar.
+  }
+  return true;
+}
+
 /** The address the link was requested for, if it was requested in this browser. */
 export function getPendingSignInEmail(): string | null {
   try {
@@ -209,7 +244,10 @@ export function clearPendingSignInEmail(): void {
  * before we return.
  */
 export async function completeEmailLinkSignIn(email: string): Promise<User> {
-  const credential = await signInWithEmailLink(auth, email.trim(), window.location.href);
+  // Prefer the copy taken before the address bar was cleared; fall back to the
+  // live URL for any caller that did not go through captureIncomingEmailLink.
+  const link = capturedLink ?? window.location.href;
+  const credential = await signInWithEmailLink(auth, email.trim(), link);
   clearPendingSignInEmail();
 
   const isNewAccount = await ensureUserDoc();

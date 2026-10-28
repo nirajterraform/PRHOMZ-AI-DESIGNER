@@ -43,15 +43,6 @@ function describeLinkError(err: unknown): string {
   return 'We could not complete the sign-in. Please request a new link.';
 }
 
-/** Drop the one-time link parameters so a refresh doesn't retry a used code. */
-function cleanUrl(): void {
-  try {
-    window.history.replaceState({}, '', window.location.pathname);
-  } catch {
-    // Non-fatal: the app still works, a refresh just shows the expired-link message.
-  }
-}
-
 export const EmailLinkCallback: React.FC<{
   onComplete: () => void;
   onGiveUp: () => void;
@@ -63,10 +54,10 @@ export const EmailLinkCallback: React.FC<{
     setState({ kind: 'working' });
     try {
       await completeEmailLinkSignIn(address);
-      // Clear the URL so the used code is not replayed on reload, then hand
-      // back to App explicitly. Handing back on an auth-state change instead
-      // would race a restored session on the same page load.
-      cleanUrl();
+      // The address bar was already cleared when the link was captured, so
+      // there is nothing to tidy here. Hand back to App explicitly — doing it
+      // on an auth-state change instead would race a restored session on the
+      // same page load.
       onComplete();
     } catch (err) {
       const message = describeLinkError(err);
@@ -180,10 +171,7 @@ export const EmailLinkCallback: React.FC<{
                   <p className="text-sm text-google-gray leading-relaxed">{state.message}</p>
                 </div>
                 <Button
-                  onClick={() => {
-                    cleanUrl();
-                    onGiveUp();
-                  }}
+                  onClick={onGiveUp}
                   className="w-full py-4 rounded-2xl text-base shadow-xl"
                 >
                   Request a New Link

@@ -18,7 +18,7 @@ import { Loader2, LogOut, Crown, AlertTriangle, CalendarClock, MessageSquare, Tr
 import { FeedbackModal } from './components/FeedbackModal';
 import { DeleteAccountModal } from './components/DeleteAccountModal';
 import { EmailLinkCallback } from './components/EmailLinkCallback';
-import { onAuthChange, signOut, isIncomingEmailLink, ensureUserDoc } from './services/authService';
+import { onAuthChange, signOut, captureIncomingEmailLink, ensureUserDoc } from './services/authService';
 import { subscribeToUser } from './services/userService';
 import { subscribeToGallery } from './services/galleryService';
 import { createCustomerPortalSession } from './services/stripeService';
@@ -51,12 +51,15 @@ function MainApp() {
   const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
 
 
-  // An incoming passwordless sign-in link, captured once on mount. Checked
-  // before the normal auth gates because the user is not signed in yet at this
-  // point — the link is what signs them in. Always false when the passwordless
-  // feature was never used, so this costs nothing on the password path.
+  // An incoming passwordless sign-in link. Checked before the normal auth gates
+  // because the user is not signed in yet at this point — the link is what signs
+  // them in. Always false when the passwordless feature was never used, so this
+  // costs nothing on the password path.
+  //
+  // This both detects the link and immediately strips it from the address bar,
+  // so the one-time credential in it never reaches browser history.
   const [handlingEmailLink, setHandlingEmailLink] = useState<boolean>(() =>
-    isIncomingEmailLink(),
+    captureIncomingEmailLink(),
   );
 
   // Phase 4 Day 3: detect post-checkout redirect from Stripe / MockCheckout and
