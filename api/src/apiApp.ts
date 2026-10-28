@@ -16,6 +16,7 @@ import { handleProxyShopifySearch } from "./proxyShopifySearch";
 import { handleProxyCreateCheckoutSession } from "./proxyCreateCheckoutSession";
 import { handleProxyCreateCustomerPortalSession } from "./proxyCreateCustomerPortalSession";
 import { handleOnSignup } from "./onUserCreate";
+import { handleRequestEmailLink } from "./requestEmailLink";
 import { handleExpireOldImages } from "./expireOldImages";
 import { handleHardDeleteExpiredAccounts } from "./hardDeleteAccounts";
 import { handleOnGalleryFinalize } from "./onGalleryImageFinalize";
@@ -126,6 +127,17 @@ app.post(
   requireAuth,
   requireVerifiedEmail,
   wrap((req) => handleDeleteAccount(req.user!.uid)),
+);
+
+// --- Public routes (no token — the caller has no account yet) ---
+
+// Gate in front of a passwordless sign-in link: throwaway-domain check, rate
+// limits, and the Terms/Privacy acceptance record. Deliberately unauthenticated;
+// everything that protects it lives in the handler. Gated server-side by
+// PASSWORDLESS_AUTH, which is unset in production.
+app.post(
+  "/auth/requestEmailLink",
+  wrap((req) => handleRequestEmailLink(req.body, req.ip)),
 );
 
 // --- Internal routes ---

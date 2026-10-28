@@ -87,6 +87,43 @@ export async function apiGet<TOut>(path: string): Promise<TOut> {
   return parsed as TOut;
 }
 
+/**
+ * POST without an Authorization header.
+ *
+ * Only for the handful of endpoints a caller reaches before they have an
+ * account — today just the passwordless sign-in-link gate. Everything else must
+ * go through `apiPost`, which requires a token.
+ */
+export async function apiPostPublic<TIn, TOut>(path: string, body: TIn): Promise<TOut> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body ?? {}),
+  });
+
+  let parsed: unknown = null;
+  const text = await res.text();
+  if (text) {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = { error: "unparseable_response", message: text.slice(0, 200) };
+    }
+  }
+
+  if (!res.ok) {
+    const err = parsed as { error?: string; message?: string; details?: unknown } | null;
+    throw new ApiClientError(
+      res.status,
+      err?.error || `http_${res.status}`,
+      err?.message || res.statusText || "Request failed.",
+      err?.details,
+    );
+  }
+
+  return parsed as TOut;
+}
+
 export async function apiPost<TIn, TOut>(path: string, body: TIn): Promise<TOut> {
   let result = await sendPost(path, body, await getAuthHeader());
 

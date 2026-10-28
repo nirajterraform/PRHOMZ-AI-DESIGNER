@@ -4,13 +4,16 @@ import {
   signOut as fbSignOut,
   sendEmailVerification,
   sendPasswordResetEmail,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
   onAuthStateChanged,
   type User,
   type Unsubscribe,
 } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { auth, firestore } from "./firebaseClient";
-import { apiPost, ApiClientError } from "./apiClient";
+import { apiPost, apiPostPublic, ApiClientError } from "./apiClient";
 import { validateSignupProfile, type SignupProfile } from "../shared/profile";
 
 const PASSWORD_MIN_LENGTH = 8;
@@ -92,6 +95,161 @@ export async function signUp(
 
   return credential.user;
 }
+
+// --- Passwordless (email link) sign-in ---------------------------------------
+
+/**
+ * Where the sign-in email is stored between requesting the link and clicking it.
+ *
+ * Firebase requires the address to complete the sign-in, and deliberately does
+ * not put it in the link (anyone who intercepted the URL could then sign in as
+ * that person). Keeping it here means the common case -- request and click in the
+ * same browser -- needs no retyping; a different browser falls back to asking.
+ */
+const PENDING_EMAIL_KEY = "prhomz.pendingSignInEmail";
+
+/**
+ * Whether the UI should offer the passwordless path at all.
+ *
+ * Build-time flag, so a production build (which does not set it) renders the
+ * existing password screens unchanged even with this code compiled in.
+ */
+export function passwordlessEnabled(): boolean {
+  return (import.meta.env.VITE_PASSWORDLESS_AUTH as string | undefined) === "on";
+}
+
+/** The server turned the feature off — callers should show the password form. */
+export const PASSWORDLESS_DISABLED = "passwordless_disabled";
+
+function reasonOf(error: unknown): string | undefined {
+  if (!(error instanceof ApiClientError)) return undefined;
+  return (error.details as { reason?: string } | undefined)?.reason;
+}
+
+/**
+ * Ask for a sign-in link.
+ *
+ * Two steps on purpose: our own gate decides whether the request is allowed
+ * (throwaway domain, rate limits) and records the user's acceptance of the Terms
+ * and Privacy Policy, and only then does Firebase send the email. If the gate
+ * refuses, no email is sent.
+ *
+ * Throws an Error whose message is `PASSWORDLESS_DISABLED` when the server-side
+ * flag is off, so the caller can fall back rather than show a dead end.
+ */
+export async function requestEmailLink(
+  email: string,
+  consent: { acceptedTerms: boolean; acceptedPrivacy: boolean },
+): Promise<void> {
+  const trimmed = email.trim();
+  const formatError = validateEmailFormat(trimmed);
+  if (formatError) throw new Error(formatError);
+
+  try {
+    await apiPostPublic<
+      { email: string; acceptedTerms: boolean; acceptedPrivacy: boolean },
+      { allowed: true }
+    >("/auth/requestEmailLink", {
+      email: trimmed,
+      acceptedTerms: consent.acceptedTerms,
+      acceptedPrivacy: consent.acceptedPrivacy,
+    });
+  } catch (e) {
+    if (reasonOf(e) === PASSWORDLESS_DISABLED) throw new Error(PASSWORDLESS_DISABLED);
+    throw e;
+  }
+
+  await sendSignInLinkToEmail(auth, trimmed, {
+    // Must be an authorized domain on the Firebase project. Using the current
+    // origin keeps staging and production each pointing at themselves.
+    url: `${window.location.origin}/`,
+    handleCodeInApp: true,
+  });
+
+  try {
+    window.localStorage.setItem(PENDING_EMAIL_KEY, trimmed);
+  } catch {
+    // Private browsing can refuse storage; the user will just be asked to
+    // re-enter their address when they click the link.
+  }
+}
+
+/** True when the current URL is a Firebase sign-in link. */
+export function isIncomingEmailLink(): boolean {
+  try {
+    return isSignInWithEmailLink(auth, window.location.href);
+  } catch {
+    return false;
+  }
+}
+
+/** The address the link was requested for, if it was requested in this browser. */
+export function getPendingSignInEmail(): string | null {
+  try {
+    return window.localStorage.getItem(PENDING_EMAIL_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingSignInEmail(): void {
+  try {
+    window.localStorage.removeItem(PENDING_EMAIL_KEY);
+  } catch {
+    // nothing to do
+  }
+}
+
+/**
+ * Finish a passwordless sign-in and make sure the account is usable.
+ *
+ * Email-link sign-in marks the address verified, so the user lands straight in
+ * the app — which means the Firestore user document has to exist by then or they
+ * sit on the "Preparing your studio…" spinner forever. Hence the bootstrap call
+ * before we return.
+ */
+export async function completeEmailLinkSignIn(email: string): Promise<User> {
+  const credential = await signInWithEmailLink(auth, email.trim(), window.location.href);
+  clearPendingSignInEmail();
+
+  const isNewAccount = await ensureUserDoc();
+
+  if (isNewAccount) {
+    // GA4 conversion, same event the password path fires.
+    try {
+      (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag?.(
+        "event",
+        "sign_up",
+        { method: "email_link" },
+      );
+    } catch {
+      // analytics must never break sign-in
+    }
+  }
+
+  return credential.user;
+}
+
+/**
+ * Create the Firestore user document if it is missing. Idempotent server-side.
+ *
+ * No profile is sent: passwordless accounts have no profile fields, and the
+ * server tolerates their absence. Returns true when a document was created.
+ */
+export async function ensureUserDoc(): Promise<boolean> {
+  try {
+    const result = await apiPost<Record<string, never>, { created: boolean; uid: string }>(
+      "/internal/onSignup",
+      {},
+    );
+    return result.created;
+  } catch (e) {
+    console.warn("User-doc bootstrap failed; will retry on next load:", e);
+    return false;
+  }
+}
+
+// --- Password sign-in --------------------------------------------------------
 
 export async function signIn(email: string, password: string): Promise<User> {
   const credential = await signInWithEmailAndPassword(auth, email, password);

@@ -4,6 +4,55 @@ import { rollingResetAt } from "./_shared/tiers";
 import { USE_MOCK_STRIPE } from "./_shared/pricing";
 import { validateSignupProfile, type SignupProfile } from "./_shared/profile";
 import { ApiError } from "./lib/apiError";
+import { CONSENT_COLLECTION, emailConsentId } from "./requestEmailLink";
+
+/**
+ * Terms/Privacy acceptance for a passwordless signup.
+ *
+ * A password signup collects acceptance on the signup form and the frontend
+ * stamps the timestamps itself after bootstrap. A passwordless signup has no
+ * such form after authentication -- acceptance happened on the screen where the
+ * link was requested, before any uid existed -- so it was recorded against a
+ * hash of the address and is copied onto the user document here.
+ *
+ * Returns null when there is no record, in which case the caller leaves the
+ * fields alone rather than inventing a consent that may not have been given.
+ */
+async function consentForEmail(
+  email: string,
+): Promise<{ acceptedTermsAt: number; acceptedPrivacyAt: number } | null> {
+  if (!email) return null;
+  try {
+    const snap = await admin
+      .firestore()
+      .doc(`${CONSENT_COLLECTION}/${emailConsentId(email)}`)
+      .get();
+    if (!snap.exists) return null;
+    const data = snap.data() as {
+      acceptedTermsAt?: number;
+      acceptedPrivacyAt?: number;
+    };
+    if (
+      typeof data.acceptedTermsAt !== "number" ||
+      typeof data.acceptedPrivacyAt !== "number"
+    ) {
+      return null;
+    }
+    return {
+      acceptedTermsAt: data.acceptedTermsAt,
+      acceptedPrivacyAt: data.acceptedPrivacyAt,
+    };
+  } catch (e) {
+    console.warn(
+      JSON.stringify({
+        severity: "WARNING",
+        event: "consent_lookup_failed",
+        error: (e as Error).message,
+      }),
+    );
+    return null;
+  }
+}
 
 export interface OnSignupOutput {
   created: boolean;
@@ -91,10 +140,18 @@ export async function handleOnSignup(
     }
   }
 
+  // Only looked up when no profile was supplied, i.e. the passwordless path.
+  // The password path stamps acceptance from the frontend after bootstrap, and
+  // writing it here too would race that write for no benefit.
+  const consent = profileFields ? null : await consentForEmail(safeEmail);
+
   await ref.set({
     id: uid,
     email: safeEmail,
     name,
+    // Spread, not null defaults: absent means "no record", which must not be
+    // confused with "explicitly not accepted".
+    ...(consent ?? {}),
     // Profile captured at signup (null on the legacy first-sign-in path).
     firstName: profileFields?.firstName ?? null,
     lastName: profileFields?.lastName ?? null,
