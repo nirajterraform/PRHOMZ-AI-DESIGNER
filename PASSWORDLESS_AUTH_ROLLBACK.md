@@ -13,6 +13,19 @@ designer.prhomzai.com) is not touched by any step below.
 | Cloud Run `api` image | `us-central1-docker.pkg.dev/prhomzmvp-staging-505019/api/api:v15` |
 | Frontend host | `prhomzmvp-staging-505019.web.app` |
 | API base | `https://api-36mqr36owq-uc.a.run.app` |
+| Identity Platform `signIn.email` | `{"enabled": true, "passwordRequired": true}` |
+
+## State after the change
+
+| Thing | Value |
+|---|---|
+| Commit | `f297d0c` |
+| Cloud Run `api` revision | `api-00021-4lj` |
+| Cloud Run `api` image | `…/api/api:v16` |
+| Added env var | `PASSWORDLESS_AUTH=on` |
+| Frontend bundle | `assets/main-CsTTygnA.js` |
+| Build id (corner badge) | `261028-0942` |
+| Identity Platform `signIn.email` | `{"enabled": true}` — `passwordRequired` absent = false, i.e. password **and** email-link both allowed |
 
 `api` env vars set at capture (these are **not** managed by Terraform state for
 values set by hand — a `terraform apply` clears them, so this list is the record):
@@ -78,10 +91,23 @@ git revert --no-commit pre-passwordless..HEAD && git commit -m "revert: password
 
 ### 5. Identity Platform provider
 
-Turning the Email-link provider back off in the staging Firebase console
-(Authentication → Sign-in method → Email/Password → *Email link* toggle) stops
-any link being issued at source. Existing password sign-in is a separate
-toggle and is unaffected.
+Turning the Email-link provider back off stops any link being issued at source.
+Password sign-in is unaffected either way.
+
+In the console: Authentication → Sign-in method → Email/Password → untick
+*Email link (passwordless sign-in)*. Or by API:
+
+```sh
+PROJ=prhomzmvp-staging-505019
+curl -s -X PATCH \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "x-goog-user-project: $PROJ" -H "Content-Type: application/json" \
+  "https://identitytoolkit.googleapis.com/admin/v2/projects/$PROJ/config?updateMask=signIn.email.passwordRequired" \
+  -d '{"signIn":{"email":{"passwordRequired":true}}}'
+```
+
+`passwordRequired: true` restores the captured state (password only).
+**This setting is per Firebase project — the production project was not touched.**
 
 ## Why production is safe if these commits are ever promoted
 
