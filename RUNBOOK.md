@@ -174,6 +174,25 @@ payment fails, or a P0 JS error on signup/generate. Roll back per §11.2.
 > hosting:rollback` (instant → v1.1.0 `main-BUBBWikQ.js`), or Firebase console → Release history.
 > Existing users get the new version automatically via the service worker on next load.
 
+> **✅ v1.3.0 PASSWORDLESS EMAIL SIGN-IN PRODUCTION LAUNCH (2026-10-28):** new accounts need
+> only an email address — we send a sign-in link and the address becomes the credential. The six
+> signup profile fields (first/last name, gender, age, zip, country) are **dropped**; existing
+> password users keep their passwords and the password form stays. Stakeholder-requested: users
+> were reluctant to hand over details at signup. **Full stack:** api `v21` (rev `api-00026-wk2`),
+> frontend `main-u8XXv2wv.js` built `VITE_THEME=brand`, Identity Platform Email/Password provider
+> switched to `passwordRequired: false` (enables email-link *alongside* password sign-in). Built
+> and verified in staging first (`passwordless-v1`, api `v16`). Abuse controls: throwaway-domain
+> blocklist + 5 links/hour per address + 10/hour per IP. Terms/Privacy acceptance now recorded
+> server-side at link request in `emailConsents` (**legal record — do not delete**). Also fixed a
+> pre-existing hang where a verified user with no Firestore doc sat on "Preparing your studio…"
+> forever. Repo tagged `v1.3.0` (git `50b7d8c`). **Rollback — 5 levers, see
+> `PASSWORDLESS_AUTH_ROLLBACK.md`:** fastest is `gcloud run services update api --remove-env-vars
+> PASSWORDLESS_AUTH` (instant, no deploy — frontend falls back to the password form); then api
+> image → `api-00025-wn2`; frontend → `hosting:rollback` (→ `main-BbP5QfAJ.js`); provider →
+> `passwordRequired: true`; code → tag `pre-passwordless-prod` (`4ef6c86`). **Known consequence:**
+> new accounts have no country/age/gender/name, so the stakeholder user report and the Looker
+> country dimension go blank for new signups (existing users unaffected).
+
 > **✅ v1.1.0 BLUE BRAND PRODUCTION LAUNCH (2026-08-11):** designer redesigned to the blue brand + stakeholder feedback (wordmark=Georgia italic, quota-reached upgrade card, red Renders pill, Shop-the-Look mobile new-tab, room-type dropdown, etc.) → built `VITE_THEME=brand` → `firebase deploy --only hosting:app`. Landing (`prhomzai.com`) updated: "How it works" boxes link to designer.prhomzai.com (new tab; demos preserved via stopPropagation) + membership synced to app (Freemium 30). Repos tagged `v1.1.0` (designer + landing). **Rollback:** designer → `npx firebase-tools hosting:rollback` (or Hosting console); landing → `gcloud run services update-traffic landing --to-revisions=landing-00023-tg8=100 --region us-central1`. Preview channels `green-design`/`brand-design` intentionally KEPT for the PWA/mobility round.
 
 > **v19–v20 (2026-08-06):** quota changes in `shared/tiers.ts` (backup `shared/tiers.ts.bak.quota` = pre-change state). v19: freemium daily→unlimited, monthly 10→30. v20: basic daily 5→unlimited (monthly 100 kept). **Revert:** restore the backup → rebuild → redeploy api+stripe-webhook to the previous images above, OR rebuild a fresh tag with reverted config.
