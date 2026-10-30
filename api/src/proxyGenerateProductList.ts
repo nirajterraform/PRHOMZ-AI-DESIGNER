@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { genAiClient } from "./lib/genaiClient";
 import { findMatchingInventory, ProductSource } from "./lib/shopify";
 import { ApiError } from "./lib/apiError";
 
@@ -31,10 +32,8 @@ export async function handleProxyGenerateProductList(
     throw new ApiError("invalid-argument", "base64Image required.");
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new ApiError("internal", "GEMINI_API_KEY not configured.");
+  const ai = genAiClient();
 
-  const ai = new GoogleGenAI({ apiKey });
   const base64Data = base64Image.split(",")[1] || base64Image;
   const mimeType =
     base64Image.substring(base64Image.indexOf(":") + 1, base64Image.indexOf(";")) ||
@@ -49,14 +48,17 @@ export async function handleProxyGenerateProductList(
   try {
     response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: {
-        parts: [
-          { inlineData: { data: base64Data, mimeType } },
-          {
-            text: `EXHAUSTIVE INTERIOR ARTIFACT SCAN (SOURCE: ${source}): ${sourceInstruction} Identify all pieces of furniture, lighting, and decor. Provide 'name', 'description', and 'price' (USD). Be very specific about brands or styles shown.`,
-          },
-        ],
-      },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { data: base64Data, mimeType } },
+            {
+              text: `EXHAUSTIVE INTERIOR ARTIFACT SCAN (SOURCE: ${source}): ${sourceInstruction} Identify all pieces of furniture, lighting, and decor. Provide 'name', 'description', and 'price' (USD). Be very specific about brands or styles shown.`,
+            },
+          ],
+        },
+      ],
       config: {
         responseMimeType: "application/json",
         responseSchema: {

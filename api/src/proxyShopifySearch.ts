@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { genAiClient } from "./lib/genaiClient";
 import { findMatchingInventory } from "./lib/shopify";
 import { ApiError } from "./lib/apiError";
 
@@ -30,22 +31,23 @@ export async function handleProxyShopifySearch(
     throw new ApiError("invalid-argument", "query required.");
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new ApiError("internal", "GEMINI_API_KEY not configured.");
+  const ai = genAiClient();
 
-  const ai = new GoogleGenAI({ apiKey });
 
   let response;
   try {
     response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: {
-        parts: [
-          {
-            text: `Search luxury catalog for items matching: "${query}". Return name, description, price (USD), colors.`,
-          },
-        ],
-      },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `Search luxury catalog for items matching: "${query}". Return name, description, price (USD), colors.`,
+            },
+          ],
+        },
+      ],
       config: {
         responseMimeType: "application/json",
         responseSchema: {

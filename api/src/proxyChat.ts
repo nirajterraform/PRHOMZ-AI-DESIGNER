@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { genAiClient } from "./lib/genaiClient";
 import { ApiError } from "./lib/apiError";
 
 export interface ProxyChatInput {
@@ -16,10 +16,8 @@ export async function handleProxyChat(input: ProxyChatInput): Promise<ProxyChatO
     throw new ApiError("invalid-argument", "message required.");
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new ApiError("internal", "GEMINI_API_KEY not configured.");
+  const ai = genAiClient();
 
-  const ai = new GoogleGenAI({ apiKey });
 
   try {
     const chat = ai.chats.create({
