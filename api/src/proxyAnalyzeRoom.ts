@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { genAiClient } from "./lib/genaiClient";
 import { ApiError } from "./lib/apiError";
 
 /**
@@ -92,10 +93,8 @@ export async function handleProxyAnalyzeRoom(
     throw new ApiError("invalid-argument", "base64Image required.");
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new ApiError("internal", "GEMINI_API_KEY not configured.");
+  const ai = genAiClient();
 
-  const ai = new GoogleGenAI({ apiKey });
   const base64Data = base64Image.split(",")[1] || base64Image;
   const mimeType =
     base64Image.substring(base64Image.indexOf(":") + 1, base64Image.indexOf(";")) ||
@@ -130,9 +129,12 @@ export async function handleProxyAnalyzeRoom(
   try {
     response = await ai.models.generateContent({
       model,
-      contents: {
-        parts: [{ inlineData: { data: base64Data, mimeType } }, { text: instruction }],
-      },
+      contents: [
+        {
+          role: "user",
+          parts: [{ inlineData: { data: base64Data, mimeType } }, { text: instruction }],
+        },
+      ],
       config: {
         responseMimeType: "application/json",
         responseSchema: {

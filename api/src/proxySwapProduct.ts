@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { genAiClient } from "./lib/genaiClient";
 import { findMatchingInventory, ProductSource } from "./lib/shopify";
 import { ApiError } from "./lib/apiError";
 
@@ -48,10 +49,8 @@ export async function handleProxySwapProduct(
       ? currentProduct.price
       : undefined;
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new ApiError("internal", "GEMINI_API_KEY not configured.");
+  const ai = genAiClient();
 
-  const ai = new GoogleGenAI({ apiKey });
   const base64Data = base64Image.split(",")[1] || base64Image;
   const mimeType =
     base64Image.substring(base64Image.indexOf(":") + 1, base64Image.indexOf(";")) ||
@@ -75,14 +74,17 @@ export async function handleProxySwapProduct(
   try {
     response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: {
-        parts: [
-          { inlineData: { data: base64Data, mimeType } },
-          {
-            text: `Suggest an alternative piece for "${currentProduct.name}" (SOURCE: ${source}).${sourceInstruction}${priceInstruction} Return name, description, price (USD), colors.`,
-          },
-        ],
-      },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { data: base64Data, mimeType } },
+            {
+              text: `Suggest an alternative piece for "${currentProduct.name}" (SOURCE: ${source}).${sourceInstruction}${priceInstruction} Return name, description, price (USD), colors.`,
+            },
+          ],
+        },
+      ],
       config: {
         responseMimeType: "application/json",
         responseSchema: {

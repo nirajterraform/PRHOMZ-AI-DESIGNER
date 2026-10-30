@@ -1,4 +1,5 @@
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GenerateContentResponse } from "@google/genai";
+import { genAiClient } from "./lib/genaiClient";
 import * as admin from "firebase-admin";
 import { computeExpiresAt, UserTier } from "./_shared/tiers";
 import { reserveRenderSlot } from "./lib/quota";
@@ -33,8 +34,7 @@ export async function handleProxyGenerateImage(
   const { prompt, aspectRatio = "16:9", projectName } = input || {};
   if (!prompt) throw new ApiError("invalid-argument", "prompt required.");
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new ApiError("internal", "GEMINI_API_KEY not configured.");
+  const ai = genAiClient();
 
   const quota = await reserveRenderSlot(uid);
   if (!quota.ok) {
@@ -54,7 +54,6 @@ export async function handleProxyGenerateImage(
 
   const tier: UserTier = quota.tier;
 
-  const ai = new GoogleGenAI({ apiKey });
   const industryConstraint = "PHOTOREALISTIC HIGH-END INTERIOR DESIGN AND HOME FURNISHING VISION: ";
   const styleSuffix = ", architectural photography, detailed textures, interior decor focus, avoid people, focus on furniture and room layout.";
   const finalPrompt = `${industryConstraint} ${prompt} ${styleSuffix}`;
@@ -63,7 +62,7 @@ export async function handleProxyGenerateImage(
   try {
     response = await ai.models.generateContent({
       model: "gemini-2.5-flash-image",
-      contents: { parts: [{ text: finalPrompt }] },
+      contents: [{ role: "user", parts: [{ text: finalPrompt }] }],
       config: { imageConfig: { aspectRatio } },
     });
   } catch (e) {
@@ -72,9 +71,15 @@ export async function handleProxyGenerateImage(
     throw new ApiError("internal", "AI service failed. Please try again.");
   }
 
+  // Thinking-capable image models (gemini-3-pro-image) emit their reasoning as
+  // extra parts, and some of those parts are *images* -- intermediate drafts
+  // marked `thought: true`. Taking the first inlineData we see therefore picks
+  // the draft, not the answer: on a measured call the draft and the final image
+  // were different pictures. Skip anything flagged as a thought.
   let outputBuffer: Buffer | null = null;
   if (response.candidates?.[0]?.content?.parts) {
     for (const part of response.candidates[0].content.parts) {
+      if (part.thought === true) continue;
       if (part.inlineData?.data) {
         outputBuffer = Buffer.from(part.inlineData.data, "base64");
         break;

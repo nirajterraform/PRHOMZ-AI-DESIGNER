@@ -1,4 +1,5 @@
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GenerateContentResponse } from "@google/genai";
+import { genAiClient } from "./lib/genaiClient";
 import * as admin from "firebase-admin";
 import { computeExpiresAt, UserTier } from "./_shared/tiers";
 import { reserveRenderSlot } from "./lib/quota";
@@ -254,8 +255,7 @@ export async function handleProxyRemodel(
   // reverts behaviour even for a client that still sends a brief.
   const brief = agentEnabled() ? agentBrief : undefined;
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new ApiError("internal", "GEMINI_API_KEY not configured.");
+  const ai = genAiClient();
 
   const quota = await reserveRenderSlot(uid);
   if (!quota.ok) {
@@ -275,7 +275,6 @@ export async function handleProxyRemodel(
 
   const tier: UserTier = quota.tier;
 
-  const ai = new GoogleGenAI({ apiKey });
   const base64Data = base64Image.split(",")[1] || base64Image;
   const mimeType =
     base64Image.substring(base64Image.indexOf(":") + 1, base64Image.indexOf(";")) ||
@@ -289,12 +288,15 @@ export async function handleProxyRemodel(
   try {
     response = await ai.models.generateContent({
       model,
-      contents: {
-        parts: [
-          { inlineData: { data: base64Data, mimeType } },
-          { text: finalInstruction },
-        ],
-      },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { data: base64Data, mimeType } },
+            { text: finalInstruction },
+          ],
+        },
+      ],
     });
   } catch (e) {
     // Model is included so a tier that is unavailable or rate-limited for this
@@ -304,9 +306,15 @@ export async function handleProxyRemodel(
     throw new ApiError("internal", "AI service failed. Please try again.");
   }
 
+  // Thinking-capable image models (gemini-3-pro-image) emit their reasoning as
+  // extra parts, and some of those parts are *images* -- intermediate drafts
+  // marked `thought: true`. Taking the first inlineData we see therefore picks
+  // the draft, not the answer: on a measured call the draft and the final image
+  // were different pictures. Skip anything flagged as a thought.
   let outputBuffer: Buffer | null = null;
   if (response.candidates?.[0]?.content?.parts) {
     for (const part of response.candidates[0].content.parts) {
+      if (part.thought === true) continue;
       if (part.inlineData?.data) {
         outputBuffer = Buffer.from(part.inlineData.data, "base64");
         break;
